@@ -150,13 +150,13 @@ Django, Celery, Biopython, and other Python packages are installed from `require
 Clone the repository:
 
 ```bash
-git clone https://github.com/vasarine/Building-Biological-web-applications-using-Django.git
+git clone https://github.com/vasarine/HMM-Analysis-Tools-Application.git
 ```
 
 Open the project directory:
 
 ```bash
-cd Building-Biological-web-applications-using-Django
+cd HMM-Analysis-Tools-Application
 ```
 
 Create a virtual environment:
