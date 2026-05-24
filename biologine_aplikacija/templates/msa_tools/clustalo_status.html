@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}MSA Status – HMM Analysis Tools{% endblock %}
+
+{% block content %}
+{% include "_app_design.html" %}
+
+<div class="app-page">
+
+  {% if request.GET.from == 'my-projects' %}
+  <a href="{% url 'my-projects' %}?tool=preprocessing" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    My Projects
+  </a>
+  {% else %}
+  <a href="{{ retry_form_url }}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    New alignment
+  </a>
+  {% endif %}
+
+  <div class="page-title">MSA – {{ tool_label|default:"Clustal Omega" }}</div>
+
+  {% if project.task_status == 'FAILURE' %}
+    {% include "_tool_actions.html" with tool_type=tool_type|default:"clustalo" project_id=project.id show_my_projects=True back_tool_param="preprocessing" retry_url=retry_form_url retry_label="Try with other input" hide_delete=True %}
+  {% elif project.task_status != 'SUCCESS' %}
+    {% include "_tool_actions.html" with tool_type=tool_type|default:"clustalo" project_id=project.id show_my_projects=True back_tool_param="preprocessing" %}
+  {% endif %}
+
+  {% if project.task_status != 'SUCCESS' %}
+  <div class="form-card">
+    <div class="status-line">
+      <span class="project-label">{{ project.name|default:"Untitled" }}</span>
+      <span class="status-pill {{ project.task_status|lower }}" id="status-badge">{{ project.task_status }}</span>
+    </div>
+
+    <div class="progress-wrap" id="progress-wrap" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+    </div>
+    <p class="progress-msg" id="progress-msg" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>Running...</p>
+
+    <div id="error-container" {% if project.task_status != 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="notice err">
+        <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span id="error-message">{{ project.error_message|default:"Alignment failed." }}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if project.task_status == 'SUCCESS' %}
+  <div class="results-card" id="co-results">
+    <div class="results-header">
+      <div class="results-title-wrap">
+        <span class="results-title">Run Report</span>
+        {% if project.name %}<span class="results-filename">{{ project.name }}</span>{% endif %}
+      </div>
+      <div class="results-actions-cluster">
+        <span class="results-status ok">✓ COMPLETE</span>
+        <button type="button" class="rr-icon-btn" onclick="rrToggleCard(this)" title="Collapse/expand">
+          <svg class="rr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="results-body">
+      <div class="report-summary">
+        <div class="comment"># {{ tool_label|default:"Clustal Omega" }} - alignment summary</div>
+        <div class="row"><span class="lbl">Sequences</span><span class="val">{{ project.sequence_count|default:"-" }}</span></div>
+        <div class="row"><span class="lbl">Alignment length</span><span class="val">{{ project.alignment_length|default:"-" }}</span>{% if project.alignment_length %}<span class="note">columns</span>{% endif %}</div>
+        <div class="row"><span class="lbl">Output format</span><span class="val">{{ project.get_output_format_display }}</span></div>
+        <div class="row"><span class="lbl">Created</span><span class="val">{{ project.created_at|date:"Y-m-d H:i" }}</span></div>
+      </div>
+
+      {% include "_parameter_overrides.html" %}
+
+      <div class="result-actions">
+        {% if can_download_input %}
+        <a class="btn-secondary" href="{% url 'clustalo_input_download' project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download input FASTA
+        </a>
+        {% endif %}
+        {% if can_download_output %}
+        <a class="btn-download" href="{% url 'clustalo_download' project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download alignment
+        </a>
+        {% endif %}
+        {% if project.output_format == 'stockholm' %}
+        <a href="{% url 'hmmbuild_form' %}?from_clustalo={{ project.id }}" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Build HMM profile
+        </a>
+        {% else %}
+        <a href="{% url 'format_convert_form' %}?from_clustalo={{ project.id }}" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Convert to Stockholm
+        </a>
+        {% endif %}
+        <a href="{% url 'my-projects' %}?tool=preprocessing" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to My Projects
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if alignment_preview %}
+    {% url 'clustalo_download' project.id as alignment_dl %}
+    {% include "_result_card.html" with card_id="alignment-output" result_title="Output preview" result_subtitle=alignment_preview_subtitle result_pre=alignment_preview download_url=alignment_dl download_label="Download alignment" start_open=True truncated_note=alignment_preview_note %}
+  {% endif %}
+  {% endif %}
+
+</div>
+
+<script src="{% static 'js/task_status_poll.js' %}"></script>
+<script>
+  initTaskStatusPoll({
+    taskId: "{{ project.task_id }}",
+    statusUrl: "{% url 'clustalo_task_status' task_id='TASK_ID' %}".replace('TASK_ID', "{{ project.task_id }}"),
+    initialStatus: "{{ project.task_status }}",
+    resultsAnchorId: 'co-results',
+  });
+</script>
+{% endblock %}

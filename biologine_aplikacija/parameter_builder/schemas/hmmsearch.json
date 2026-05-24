@@ -1,0 +1,343 @@
+{
+  "tool_id": "hmmsearch",
+  "display_name": "HMMSEARCH",
+  "executable": "hmmsearch",
+  "fixed_args": [],
+  "parameters": [
+    {
+      "name": "cutoff_mode",
+      "label": "Significance cutoff method",
+      "section": "Cutoff method",
+      "type": "radio_group",
+      "default": "evalue",
+      "options": [
+        {
+          "value": "evalue",
+          "label": "E-value thresholds (-E / --domE / --incE / --incdomE)",
+          "flag": null
+        },
+        {
+          "value": "score",
+          "label": "Bit-score thresholds (-T / --domT / --incT / --incdomT)",
+          "flag": null
+        },
+        {
+          "value": "ga",
+          "label": "--cut_ga \u00b7 Use profile's gathering (GA) cutoffs",
+          "flag": "--cut_ga"
+        },
+        {
+          "value": "nc",
+          "label": "--cut_nc \u00b7 Use profile's noise (NC) cutoffs",
+          "flag": "--cut_nc"
+        },
+        {
+          "value": "tc",
+          "label": "--cut_tc \u00b7 Use profile's trusted (TC) cutoffs",
+          "flag": "--cut_tc"
+        }
+      ]
+    },
+    {
+      "name": "e_value",
+      "label": "Reporting E-value (-E)",
+      "section": "Reporting thresholds",
+      "flag": "-E",
+      "type": "float",
+      "default": 10.0,
+      "min": 1e-300,
+      "help_text": "Report sequences with E-value <= this in output. HMMER requires x > 0.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "evalue"
+      }
+    },
+    {
+      "name": "score_threshold",
+      "label": "Reporting bit-score (-T)",
+      "section": "Reporting thresholds",
+      "flag": "-T",
+      "type": "float",
+      "default": null,
+      "help_text": "Report sequences with bit-score >= this. HMMER will reject the run if combined with -E.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "score"
+      }
+    },
+    {
+      "name": "domE",
+      "label": "Reporting domain E-value (--domE)",
+      "section": "Reporting thresholds",
+      "flag": "--domE",
+      "type": "float",
+      "default": 10.0,
+      "min": 1e-300,
+      "help_text": "Report domains with E-value <= this. HMMER requires x > 0.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "evalue"
+      }
+    },
+    {
+      "name": "domT",
+      "label": "Reporting domain bit-score (--domT)",
+      "section": "Reporting thresholds",
+      "flag": "--domT",
+      "type": "float",
+      "default": null,
+      "help_text": "Report domains with bit-score >= this. HMMER will reject the run if combined with --domE.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "score"
+      }
+    },
+    {
+      "name": "incE",
+      "label": "Inclusion E-value (--incE)",
+      "section": "Inclusion thresholds",
+      "flag": "--incE",
+      "type": "float",
+      "default": null,
+      "help_text": "Threshold for considering a sequence significant (used for downstream alignment output). Defaults to reporting -E.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "evalue"
+      }
+    },
+    {
+      "name": "incT",
+      "label": "Inclusion bit-score (--incT)",
+      "section": "Inclusion thresholds",
+      "flag": "--incT",
+      "type": "float",
+      "default": null,
+      "help_text": "Threshold for considering a sequence significant by bit-score. HMMER will reject the run if combined with --incE.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "score"
+      }
+    },
+    {
+      "name": "incdomE",
+      "label": "Inclusion domain E-value (--incdomE)",
+      "section": "Inclusion thresholds",
+      "flag": "--incdomE",
+      "type": "float",
+      "default": null,
+      "help_text": "Threshold for considering a domain significant.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "evalue"
+      }
+    },
+    {
+      "name": "incdomT",
+      "label": "Inclusion domain bit-score (--incdomT)",
+      "section": "Inclusion thresholds",
+      "flag": "--incdomT",
+      "type": "float",
+      "default": null,
+      "help_text": "Threshold for considering a domain significant by bit-score. HMMER will reject the run if combined with --incdomE.",
+      "depends_on": {
+        "field": "cutoff_mode",
+        "value": "score"
+      }
+    },
+    {
+      "name": "max_filter_off",
+      "label": "Disable all heuristic filters (--max)",
+      "section": "Acceleration pipeline",
+      "flag": "--max",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Maximum sensitivity. Much slower; bypasses the filter pipeline. Disables --F1/--F2/--F3."
+    },
+    {
+      "name": "F1",
+      "label": "Stage 1 MSV filter P-value (--F1)",
+      "section": "Acceleration pipeline",
+      "flag": "--F1",
+      "type": "float",
+      "default": 0.02,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Lower = stricter filter (faster but may miss hits). Default 0.02.",
+      "depends_on": {
+        "field": "max_filter_off",
+        "value": "false"
+      }
+    },
+    {
+      "name": "F2",
+      "label": "Stage 2 Viterbi filter P-value (--F2)",
+      "section": "Acceleration pipeline",
+      "flag": "--F2",
+      "type": "float",
+      "default": 0.001,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Default 1e-3.",
+      "depends_on": {
+        "field": "max_filter_off",
+        "value": "false"
+      }
+    },
+    {
+      "name": "F3",
+      "label": "Stage 3 Forward filter P-value (--F3)",
+      "section": "Acceleration pipeline",
+      "flag": "--F3",
+      "type": "float",
+      "default": 1e-05,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Default 1e-5.",
+      "depends_on": {
+        "field": "max_filter_off",
+        "value": "false"
+      }
+    },
+    {
+      "name": "nobias",
+      "label": "Disable composition bias filter (--nobias)",
+      "section": "Acceleration pipeline",
+      "flag": "--nobias",
+      "type": "boolean",
+      "default": false,
+      "depends_on": {
+        "field": "max_filter_off",
+        "value": "false"
+      }
+    },
+    {
+      "name": "nonull2",
+      "label": "Disable null2 score correction (--nonull2)",
+      "section": "Acceleration pipeline",
+      "flag": "--nonull2",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Turn off the second-stage biased-composition correction applied to per-domain scores."
+    },
+    {
+      "name": "Z",
+      "label": "Effective database size for E-values (-Z)",
+      "section": "E-value normalization",
+      "flag": "-Z",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "help_text": "Assume the database contains this many sequences when computing E-values. Use to keep E-values comparable between runs of different database sizes."
+    },
+    {
+      "name": "domZ",
+      "label": "Effective # significant sequences for domain E-values (--domZ)",
+      "section": "E-value normalization",
+      "flag": "--domZ",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "help_text": "Fix the denominator used for per-domain E-value calculation."
+    },
+    {
+      "name": "noali",
+      "label": "Suppress alignments in output (--noali)",
+      "section": "Output formatting",
+      "flag": "--noali",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Omit per-domain alignments from the main report (smaller files)."
+    },
+    {
+      "name": "acc",
+      "label": "Prefer accessions over names (--acc)",
+      "section": "Output formatting",
+      "flag": "--acc",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "output_width",
+      "label": "Output line width",
+      "section": "Output formatting",
+      "type": "radio_group",
+      "default": "default",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (120 characters)",
+          "flag": null
+        },
+        {
+          "value": "unlimited",
+          "label": "--notextw \u00b7 Unlimited line width",
+          "flag": "--notextw"
+        },
+        {
+          "value": "custom",
+          "label": "--textw \u00b7 Custom width (set below)",
+          "flag": null
+        }
+      ]
+    },
+    {
+      "name": "textw",
+      "label": "Custom line width (--textw)",
+      "section": "Output formatting",
+      "flag": "--textw",
+      "type": "number",
+      "default": null,
+      "min": 120,
+      "help_text": "Maximum characters per line in the main text report.",
+      "depends_on": {
+        "field": "output_width",
+        "value": "custom"
+      }
+    },
+    {
+      "name": "tformat",
+      "label": "Target sequence file format (--tformat)",
+      "section": "Input format",
+      "flag": "--tformat",
+      "type": "select",
+      "default": null,
+      "options": [
+        "fasta",
+        "embl",
+        "genbank",
+        "ddbj",
+        "stockholm",
+        "a2m",
+        "afa",
+        "psiblast",
+        "clustal",
+        "phylip",
+        "phylips",
+        "selex"
+      ],
+      "help_text": "Force target sequence file format instead of autodetecting."
+    },
+    {
+      "name": "seed",
+      "label": "Random seed (--seed)",
+      "section": "Reproducibility & performance",
+      "flag": "--seed",
+      "type": "number",
+      "default": 42,
+      "min": 0,
+      "max": 999999,
+      "help_text": "Use 0 for a non-deterministic, arbitrary seed."
+    },
+    {
+      "name": "cpu",
+      "label": "Parallel CPU workers (--cpu)",
+      "section": "Reproducibility & performance",
+      "flag": "--cpu",
+      "type": "number",
+      "default": 2,
+      "min": 1,
+      "max": 8,
+      "help_text": "Number of parallel worker threads. Server defaults to 2."
+    }
+  ]
+}

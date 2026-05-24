@@ -1,0 +1,10 @@
+Django==5.2.4
+celery==5.3.6
+redis==5.0.3
+requests>=2.31.0
+biopython==1.87
+
+asgiref==3.9.0
+sqlparse==0.5.3
+
+

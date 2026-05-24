@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "_app_design.html" %}
+<div class="app-page hf-page">
+
+  <a href="{% url 'home' %}" class="app-back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Home
+  </a>
+
+  <h1 class="app-page-title tool-title">HMMSEARCH</h1>
+
+  <div class="app-card">
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      {% if form and form.non_field_errors %}
+        {% for err in form.non_field_errors %}
+          <div class="notice err">
+            <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>{{ err }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if preloaded_hmm_label %}
+        {% include "_preloaded_input_card.html" with preloaded_title="HMM profile preloaded" preloaded_text="An HMM profile from a previous HMMBUILD result has been selected automatically." preloaded_source_prefix="Source project:" preloaded_source_label=preloaded_hmm_label preloaded_next="upload or paste input sequences below to run HMMSEARCH." preloaded_dismiss_url_name="hmmsearch_dismiss_preload" %}
+      {% endif %}
+
+      <div class="app-field">
+        <label for="{{ form.name.id_for_label }}">Project Name <span class="hf-optional">(optional)</span></label>
+        {{ form.name }}
+        {% if form and form.name.errors %}
+          {% for err in form.name.errors %}
+            <p class="form-error">{{ err }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+      <hr class="hf-divider">
+
+      {% if preloaded_hmm_label %}
+        
+        <input type="hidden" name="hmm_source" value="upload">
+      {% else %}
+      <div class="app-field">
+        <div class="hf-section-title">HMM Source</div>
+        <div class="hf-radio-seg" id="hmm_source">
+          {% for choice in form.hmm_source %}
+          <label{% if choice.data.selected %} class="checked"{% endif %}>
+            {{ choice.tag }}
+            <span class="hf-dot"></span>{{ choice.choice_label }}
+          </label>
+          {% endfor %}
+        </div>
+        {% if form and form.hmm_source.errors %}
+          {% for err in form.hmm_source.errors %}
+            <p class="form-error">{{ err }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div id="upload-section" class="app-field">
+        <label>Upload HMM model file</label>
+        <label class="upload-zone" id="upload-zone-hmm">
+          <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span class="upload-zone-text">Click to upload or drag and drop</span>
+          <span class="upload-zone-hint">.hmm files</span>
+          <span class="upload-zone-filename" id="hmm-filename"></span>
+          {{ form.hmm_file }}
+        </label>
+        {% if form and form.hmm_file.errors %}
+          {% for err in form.hmm_file.errors %}
+            <p class="form-error">{{ err }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div id="external-section" style="display: none;" class="app-field">
+        <label for="{{ form.external_hmm_id.id_for_label }}">{{ form.external_hmm_id.label }}</label>
+        <div class="autocomplete-container">
+          {{ form.external_hmm_id }}
+          <div id="autocomplete-results" class="autocomplete-dropdown"></div>
+        </div>
+        <small class="form-help">Pfam ID (PF00001), InterPro ID (IPR000001), or search by name (min. 3 chars).</small>
+        {% if form and form.external_hmm_id.errors %}
+          {% for err in form.external_hmm_id.errors %}
+            <p class="form-error">{{ err }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <hr class="hf-divider">
+
+      <div class="app-field">
+        <label>Input Sequences</label>
+        <div class="hf-tab-toggle">
+          <button type="button" id="fasta-tab-upload" class="active" onclick="hfSwitchFastaTab('upload')">Upload file</button>
+          <button type="button" id="fasta-tab-paste" onclick="hfSwitchFastaTab('paste')">Paste sequences</button>
+        </div>
+
+        <div id="fasta-pane-upload">
+          <label class="upload-zone" id="upload-zone-fasta">
+            <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="upload-zone-text">Click to upload or drag and drop</span>
+            <span class="upload-zone-hint">.fasta, .fa, .fna, .faa, .ffn, .frn, .txt files</span>
+            <span class="upload-zone-filename" id="fasta-filename"></span>
+            {{ form.fasta_file }}
+          </label>
+        </div>
+
+        <div id="fasta-pane-paste" style="display:none">
+          {{ form.pasted_fasta }}
+          <small class="form-help">Paste raw FASTA content. Each entry should start with a &gt; header line.</small>
+        </div>
+
+        {% if form and form.fasta_file.errors %}
+          {% for err in form.fasta_file.errors %}
+            <p class="form-error">{{ err }}</p>
+          {% endfor %}
+        {% endif %}
+        {% if form and form.pasted_fasta.errors %}
+          {% for err in form.pasted_fasta.errors %}
+            <p class="form-error">{{ err }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      {% if error %}
+        <p class="form-error">{{ error|safe }}</p>
+      {% endif %}
+
+      <hr class="hf-divider">
+      <div class="app-field" style="display:flex;gap:8px;align-items:flex-start;">
+        {{ form.save_hits_msa }}
+        <div>
+          <label for="{{ form.save_hits_msa.id_for_label }}" style="font-weight:600;cursor:pointer;">
+            {{ form.save_hits_msa.label }}
+          </label>
+          {% if form.save_hits_msa.help_text %}
+            <div style="font-size:12px;color:#6b7280;margin-top:2px;">{{ form.save_hits_msa.help_text }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="app-field" style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;">
+        {{ form.save_pfamtbl }}
+        <div>
+          <label for="{{ form.save_pfamtbl.id_for_label }}" style="font-weight:600;cursor:pointer;">
+            {{ form.save_pfamtbl.label }}
+          </label>
+          {% if form.save_pfamtbl.help_text %}
+            <div style="font-size:12px;color:#6b7280;margin-top:2px;">{{ form.save_pfamtbl.help_text }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <hr class="section-divider">
+      {% include "_additional_parameters.html" %}
+
+      <div class="hf-submit-row">
+        <button type="submit" class="app-btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Run Search
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+
+<script>setupFastaTabToggle();</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    setupUploadZone('upload-zone-hmm', 'hmm_file', 'hmm-filename');
+    setupUploadZone('upload-zone-fasta', 'fasta_file', 'fasta-filename');
+    setupHmmSourceAndAutocomplete();
+  });
+</script>
+{% endblock %}

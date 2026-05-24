@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}HMM Analysis Tools{% endblock %}</title>
+    {% load static %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}?v=68">
+</head>
+<body>
+    <header>
+        <h1><a href="{% url 'home' %}">HMM Analysis Tools</a></h1>
+    </header>
+
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Tools</div>
+                <ul class="sidebar-nav">
+                    <li>
+                        <a href="{% url 'hmmbuild_form' %}" class="{% if 'hmmbuild' in request.path and '/users/projects/' not in request.path and '/users/shared/' not in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                            HMMBUILD
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'hmmemit_form' %}" class="{% if 'hmmemit' in request.path and '/users/projects/' not in request.path and '/users/shared/' not in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            HMMEMIT
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'hmmsearch_form' %}" class="{% if 'hmmsearch' in request.path and '/users/projects/' not in request.path and '/users/shared/' not in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            HMMSEARCH
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Preprocessing</div>
+                <ul class="sidebar-nav">
+                    <li>
+                        <a href="{% url 'fasta_validate' %}" class="{% if 'preprocessing/sequences/validate' in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            FASTA Validator
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'fasta_clean' %}" class="{% if 'preprocessing/sequences/clean' in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                            Sequence Cleaner
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'clustalo_form' %}" class="{% if 'preprocessing/msa/align' in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+                            MSA
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'format_convert_form' %}" class="{% if 'preprocessing/msa/convert' in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            Format Converter
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Workflows</div>
+                <ul class="sidebar-nav">
+                    <li>
+                        <a href="{% url 'workflow_list' %}" class="{% if 'workflows' in request.path and '/runs/' not in request.path %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            Pipelines
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Projects</div>
+                <ul class="sidebar-nav">
+                    {% if user.is_authenticated %}
+                        <li>
+                            <a href="{% url 'my-projects' %}" class="{% if '/users/my-projects/' in request.path or '/users/projects/' in request.path or sidebar_section == 'my_projects' %}active{% endif %}">
+                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                My Projects
+                            </a>
+                            {% if '/users/my-projects/' in request.path or '/users/projects/' in request.path or sidebar_section == 'my_projects' %}
+                            <ul class="submenu">
+                                <li><a href="{% url 'my-projects' %}?tool=hmmbuild"  {% if 'tool=hmmbuild'  in request.GET.urlencode or '/users/projects/hmmbuild/' in request.path or sidebar_section == 'my_projects' and sidebar_category == 'hmmbuild' %}class="active"{% endif %}>HMMBUILD</a></li>
+                                <li><a href="{% url 'my-projects' %}?tool=hmmemit"   {% if 'tool=hmmemit'   in request.GET.urlencode or '/users/projects/hmmemit/' in request.path or sidebar_section == 'my_projects' and sidebar_category == 'hmmemit' %}class="active"{% endif %}>HMMEMIT</a></li>
+                                <li><a href="{% url 'my-projects' %}?tool=hmmsearch" {% if 'tool=hmmsearch' in request.GET.urlencode or '/users/projects/hmmsearch/' in request.path or sidebar_section == 'my_projects' and sidebar_category == 'hmmsearch' %}class="active"{% endif %}>HMMSEARCH</a></li>
+                                <li><a href="{% url 'my-projects' %}?tool=preprocessing" {% if 'tool=preprocessing' in request.GET.urlencode or sidebar_section == 'my_projects' and sidebar_category == 'preprocessing' %}class="active"{% endif %}>Preprocessing</a></li>
+                                <li><a href="{% url 'my-projects' %}?tool=workflows" {% if 'tool=workflows' in request.GET.urlencode or sidebar_section == 'my_projects' and sidebar_category == 'workflows' %}class="active"{% endif %}>Workflows</a></li>
+                            </ul>
+                            {% endif %}
+                        </li>
+                    {% endif %}
+                    <li>
+                        <a href="{% url 'public-projects' %}" class="{% if '/users/public-projects/' in request.path or sidebar_section == 'public_projects' %}active{% endif %}">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            Public Projects
+                        </a>
+                        {% if '/users/public-projects/' in request.path or sidebar_section == 'public_projects' %}
+                        <ul class="submenu">
+                            <li><a href="{% url 'public-projects' %}?tool=hmmbuild" {% if 'tool=hmmbuild' in request.GET.urlencode or sidebar_section == 'public_projects' and sidebar_category == 'hmmbuild' %}class="active"{% endif %}>HMMBUILD</a></li>
+                            <li><a href="{% url 'public-projects' %}?tool=hmmemit" {% if 'tool=hmmemit' in request.GET.urlencode or sidebar_section == 'public_projects' and sidebar_category == 'hmmemit' %}class="active"{% endif %}>HMMEMIT</a></li>
+                            <li><a href="{% url 'public-projects' %}?tool=hmmsearch" {% if 'tool=hmmsearch' in request.GET.urlencode or sidebar_section == 'public_projects' and sidebar_category == 'hmmsearch' %}class="active"{% endif %}>HMMSEARCH</a></li>
+                            <li><a href="{% url 'public-projects' %}?tool=preprocessing" {% if 'tool=preprocessing' in request.GET.urlencode or sidebar_section == 'public_projects' and sidebar_category == 'preprocessing' %}class="active"{% endif %}>Preprocessing</a></li>
+                            <li><a href="{% url 'public-projects' %}?tool=workflows" {% if 'tool=workflows' in request.GET.urlencode or sidebar_section == 'public_projects' and sidebar_category == 'workflows' %}class="active"{% endif %}>Workflows</a></li>
+                        </ul>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-user">
+                {% if user.is_authenticated %}
+                    <div class="sidebar-user-info">Logged in as</div>
+                    <div class="sidebar-user-name">{{ user.username }}</div>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit">
+                            <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            Log Out
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="sidebar-nav-plain">
+                        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Login
+                    </a>
+                    <a href="{% url 'register' %}" class="sidebar-nav-plain">
+                        <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        Register
+                    </a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <main class="content-area">
+            <div class="content-container">
+                {% block breadcrumbs %}{% endblock %}
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+
+        <button class="history-toggle" id="historyToggle">HISTORY</button>
+        <aside class="history-panel" id="historyPanel">
+            <div class="history-header">
+                <h2>History</h2>
+                <button class="history-clear-btn" id="clearHistoryBtn" title="Clear all history">Clear</button>
+            </div>
+            <div class="history-content" id="historyContent">
+                <div class="history-empty">
+                    <p>Loading history...</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const historyToggle = document.getElementById('historyToggle');
+        const historyPanel = document.getElementById('historyPanel');
+        const historyContent = document.getElementById('historyContent');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+        let historyRefreshTimer = null;
+        let historyPanelOpen = false;
+
+        function scheduleHistoryRefresh(hasRunning) {
+            clearTimeout(historyRefreshTimer);
+            historyRefreshTimer = null;
+            if (!historyPanelOpen) return;
+            historyRefreshTimer = setTimeout(loadHistory, hasRunning ? 1000 : 10000);
+        }
+
+        historyToggle.addEventListener('click', function() {
+            historyPanel.classList.toggle('open');
+            historyToggle.classList.toggle('moved');
+
+            if (historyPanel.classList.contains('open')) {
+                historyPanelOpen = true;
+                loadHistory();
+                historyPanel.dataset.loaded = 'true';
+            } else {
+                historyPanelOpen = false;
+                clearTimeout(historyRefreshTimer);
+                historyRefreshTimer = null;
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            if (historyPanel.classList.contains('open') &&
+                !historyPanel.contains(event.target) &&
+                !historyToggle.contains(event.target)) {
+                historyPanel.classList.remove('open');
+                historyToggle.classList.remove('moved');
+                historyPanelOpen = false;
+                clearTimeout(historyRefreshTimer);
+                historyRefreshTimer = null;
+            }
+        });
+
+        function loadHistory() {
+            fetch('/users/api/history/?limit=20')
+                .then(response => response.json())
+                .then(data => {
+                    const hasRunning = (data.history || []).some(function(it) {
+                        return it.action_type_code === 'project_created' ||
+                               it.action_type_code === 'workflow_run_started';
+                    });
+                    renderHistory(data.history);
+                    scheduleHistoryRefresh(hasRunning);
+                })
+                .catch(error => {
+                    console.error('Error loading history:', error);
+                    historyContent.innerHTML = `
+                        <div class="history-empty">
+                            <p>Failed to load history</p>
+                        </div>
+                    `;
+                    scheduleHistoryRefresh(false);
+                });
+        }
+
+        const toolColorClass = {
+            'HMMBUILD':         'htool-teal',
+            'HMMEMIT':          'htool-purple',
+            'HMMSEARCH':        'htool-amber',
+            'CLUSTAL_OMEGA':    'htool-teal',
+            'CLUSTAL OMEGA':    'htool-teal',
+            'CLUSTALO':         'htool-teal',
+            'MAFFT':            'htool-teal',
+            'MUSCLE':           'htool-teal',
+            'KALIGN':           'htool-teal',
+            'FASTA_VALIDATE':   'htool-blue',
+            'FASTA VALIDATE':   'htool-blue',
+            'SEQUENCE_CLEAN':   'htool-blue',
+            'SEQUENCE CLEAN':   'htool-blue',
+            'SEQUENCE_CLEANER': 'htool-blue',
+            'FORMAT_CONVERT':   'htool-purple',
+            'FORMAT CONVERT':   'htool-purple',
+            'MSA_TRIM':         'htool-blue',
+            'MSA TRIM':         'htool-blue',
+        };
+
+        const toolGroupKey = {
+            'CLUSTAL_OMEGA':    'MSA',
+            'CLUSTAL OMEGA':    'MSA',
+            'CLUSTALO':         'MSA',
+            'MAFFT':            'MSA',
+            'MUSCLE':           'MSA',
+            'KALIGN':           'MSA',
+        };
+
+        const toolGroupLabel = {
+            'HMMBUILD':         'HMMBUILD',
+            'HMMEMIT':          'HMMEMIT',
+            'HMMSEARCH':        'HMMSEARCH',
+            'MSA':              'MSA',
+            'CLUSTAL_OMEGA':    'MSA',
+            'CLUSTAL OMEGA':    'MSA',
+            'CLUSTALO':         'MSA',
+            'MAFFT':            'MSA',
+            'MUSCLE':           'MSA',
+            'KALIGN':           'MSA',
+            'FASTA_VALIDATE':   'FASTA Validator',
+            'FASTA VALIDATE':   'FASTA Validator',
+            'SEQUENCE_CLEAN':   'Sequence Cleaner',
+            'SEQUENCE CLEAN':   'Sequence Cleaner',
+            'SEQUENCE_CLEANER': 'Sequence Cleaner',
+            'FORMAT_CONVERT':   'Format Converter',
+            'FORMAT CONVERT':   'Format Converter',
+            'MSA_TRIM':         'MSA Trim',
+            'MSA TRIM':         'MSA Trim',
+        };
+
+        const expandedGroups = new Set();
+        let initialAutoExpandDone = false;
+
+        function renderHistory(items) {
+            if (!items || items.length === 0) {
+                historyContent.innerHTML = `
+                    <div class="history-empty">
+                        <p>No runs yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const statusLabels = {
+                'project_created':           'Created',
+                'project_completed':         'Completed',
+                'project_failed':            'Failed',
+                'project_deleted':           'Deleted',
+                'project_shared':            'Shared',
+                'project_visibility_changed':'Updated',
+                'file_downloaded':           'Downloaded',
+                'workflow_run_started':      'Running',
+                'workflow_run_completed':    'Completed',
+                'workflow_run_failed':       'Failed',
+                'tool_completed':            'Completed',
+                'tool_failed':               'Failed',
+            };
+
+            const failedCodes    = ['project_failed', 'workflow_run_failed', 'tool_failed'];
+            const completedCodes = ['project_completed', 'workflow_run_completed', 'tool_completed'];
+            const runningCodes   = ['workflow_run_started'];
+            const workflowCodes  = ['workflow_run_started', 'workflow_run_completed', 'workflow_run_failed'];
+
+            const groupOrder = [];
+            const groups = {};
+
+            items.forEach(it => {
+                const isWf = workflowCodes.includes(it.action_type_code);
+                const rawKey = isWf ? 'WORKFLOW' : (it.tool_type || 'OTHER').toUpperCase();
+                const key = toolGroupKey[rawKey] || rawKey;
+                if (!groups[key]) {
+                    groups[key] = { key, isWorkflow: isWf, items: [] };
+                    groupOrder.push(key);
+                }
+                groups[key].items.push(it);
+            });
+
+            if (!initialAutoExpandDone) {
+                if (groupOrder.length > 0) expandedGroups.add(groupOrder[0]);
+                initialAutoExpandDone = true;
+            }
+
+            let html = '';
+            groupOrder.forEach((groupKey, groupIdx) => {
+                const group = groups[groupKey];
+                const groupLabel = group.isWorkflow
+                    ? 'Workflows'
+                    : (toolGroupLabel[groupKey] || groupKey);
+                const runCount = group.items.length;
+                const isCollapsed = !expandedGroups.has(groupKey);
+
+                html += `
+                    <div class="history-group ${isCollapsed ? 'collapsed' : ''}" data-group="${escapeHtml(groupKey)}">
+                        <div class="history-group-header" onclick="toggleHistoryGroup('${escapeHtml(groupKey)}')">
+                            <svg class="history-group-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            <span class="history-group-title">${escapeHtml(groupLabel)}</span>
+                            <span class="history-group-count">${runCount}</span>
+                        </div>
+                        <div class="history-group-body">
+                `;
+
+                group.items.forEach((item, itemIdx) => {
+                const actionCode = item.action_type_code;
+                const isFailed   = item.status === 'failure' || failedCodes.includes(actionCode);
+                const isRunning  = runningCodes.includes(actionCode);
+                const isDeleted  = actionCode === 'project_deleted' || item.deleted === true;
+                const isCreated  = actionCode === 'project_created';
+                const isClickable = !isDeleted
+                    && (completedCodes.includes(actionCode) || runningCodes.includes(actionCode) || isFailed || isCreated)
+                    && item.url;
+                const isWorkflow  = workflowCodes.includes(actionCode);
+
+                const timeAgo    = formatTimeAgo(new Date(item.timestamp));
+                const statusText = statusLabels[actionCode] || item.action_type;
+
+                let classes = [];
+                if (isFailed)         classes.push('status-failure');
+                else if (isRunning)   classes.push('status-running');
+                else if (isCreated)   classes.push('status-building');
+                else if (completedCodes.includes(actionCode)) classes.push('status-success');
+
+                if (isClickable)      classes.push('clickable');
+                if (isDeleted)        classes.push('history-item-deleted');
+                if (itemIdx === 0)    classes.push('is-latest');
+
+                const clickHandler = isClickable ? `onclick="navigateToProject('${item.url}')"` : '';
+
+                if (isWorkflow && (isDeleted || (item.steps && item.steps.length > 0))) {
+                    const totalSteps = (item.steps || []).length;
+                    const projectNameHtml = escapeHtml(item.project_name) +
+                        (isDeleted ? ' <span class="hist-deleted-tag">(deleted)</span>' : '');
+
+                    let subheaderMeta;
+                    if (isDeleted)      subheaderMeta = 'DELETED';
+                    else if (isRunning) subheaderMeta = 'RUNNING';
+                    else if (isFailed)  subheaderMeta = 'FAILED';
+                    else                subheaderMeta = totalSteps + ' STEP' + (totalSteps !== 1 ? 'S' : '');
+
+                    let stepsHtml = '';
+                    item.steps.forEach(step => {
+                        const sStepLabel = escapeHtml(step.step_label || step.tool_type);
+                        const sToolName  = escapeHtml(step.tool_name || step.tool_type.toUpperCase());
+                        const sToolKey   = (step.tool_type || '').toUpperCase();
+                        const sColorCls  = toolColorClass[sToolKey] || 'htool-gray';
+
+                        let sDotCls = '', sStatusCls = '', sStatusText = '';
+                        if (step.status === 'SUCCESS')      { sDotCls = 'sdot-green';  sStatusCls = 'sstat-green'; sStatusText = 'Completed'; }
+                        else if (step.status === 'FAILURE') { sDotCls = 'sdot-red';    sStatusCls = 'sstat-red';   sStatusText = 'Failed'; }
+                        else if (step.status === 'RUNNING') { sDotCls = 'sdot-amber';  sStatusCls = 'sstat-amber'; sStatusText = 'Running\u2026'; }
+                        else if (step.status === 'SKIPPED') { sDotCls = 'sdot-gray';   sStatusCls = 'sstat-gray';  sStatusText = 'Skipped'; }
+                        else                                 { sDotCls = 'sdot-gray';   sStatusCls = 'sstat-gray';  sStatusText = 'Queued'; }
+
+                        stepsHtml += `
+                            <div class="hstep-row">
+                                <div class="hstep-dot ${sDotCls}"></div>
+                                <div class="hstep-body">
+                                    <div class="hstep-title">${sStepLabel}</div>
+                                    <div class="hstep-sub">
+                                        <span class="htool-name ${sColorCls}">${sToolName}</span>
+                                        <span class="hstep-status ${sStatusCls}">${sStatusText}</span>
+                                    </div>
+                                </div>
+                            </div>`;
+                    });
+
+                    html += `
+                        <div class="history-item history-item-workflow ${classes.join(' ')}" ${clickHandler}>
+                            <div class="history-item-body">
+                                <div class="history-item-header">
+                                    <div class="history-item-project">${projectNameHtml}</div>
+                                    <div class="history-item-header-right">
+                                        <span class="history-item-time">${timeAgo}</span>
+                                        <button class="history-item-del-btn" type="button" title="Remove from history" onclick="deleteHistoryEntry(${item.id}, event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                                    </div>
+                                </div>
+                                <div class="history-wf-subheader">WORKFLOW &middot; ${subheaderMeta}</div>
+                                ${isDeleted ? '' : `<div class="hstep-list">${stepsHtml}</div>`}
+                            </div>
+                        </div>
+                    `;
+
+                } else {
+                    const toolColorCls = toolColorClass[item.tool_type] || 'htool-gray';
+                    let statusCls = '';
+                    if (isFailed)      statusCls = 'sstat-red';
+                    else if (isRunning) statusCls = 'sstat-amber';
+                    else if (completedCodes.includes(actionCode)) statusCls = 'sstat-green';
+                    else statusCls = 'sstat-gray';
+
+                    html += `
+                        <div class="history-item ${classes.join(' ')}" ${clickHandler}>
+                            <div class="history-dot"></div>
+                            <div class="history-item-body">
+                                <div class="history-item-header">
+                                    <div class="history-item-project">${escapeHtml(item.project_name)}</div>
+                                    <div class="history-item-header-right">
+                                        <span class="history-item-time">${timeAgo}</span>
+                                        <button class="history-item-del-btn" type="button" title="Remove from history" onclick="deleteHistoryEntry(${item.id}, event)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                                    </div>
+                                </div>
+                                <div class="history-item-meta">
+                                    <span class="htool-name ${toolColorCls}">${escapeHtml(item.tool_type)}</span>
+                                    <span class="hstep-status ${statusCls}">${statusText}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            historyContent.innerHTML = html;
+        }
+
+        function toggleHistoryGroup(groupKey) {
+            const groupEl = historyContent.querySelector('.history-group[data-group="' + CSS.escape(groupKey) + '"]');
+            if (!groupEl) return;
+            groupEl.classList.toggle('collapsed');
+            if (groupEl.classList.contains('collapsed')) {
+                expandedGroups.delete(groupKey);
+            } else {
+                expandedGroups.add(groupKey);
+            }
+        }
+        window.toggleHistoryGroup = toggleHistoryGroup;
+
+        function navigateToProject(url) {
+            if (url && url !== '#') {
+                window.location.href = url;
+            }
+        }
+
+        function formatTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+
+            let interval = seconds / 31536000;
+            if (interval > 1) return Math.floor(interval) + ' years ago';
+
+            interval = seconds / 2592000;
+            if (interval > 1) return Math.floor(interval) + ' months ago';
+
+            interval = seconds / 86400;
+            if (interval > 1) return Math.floor(interval) + ' days ago';
+
+            interval = seconds / 3600;
+            if (interval > 1) return Math.floor(interval) + ' hours ago';
+
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + ' minutes ago';
+
+            return 'just now';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        clearHistoryBtn.addEventListener('click', function() {
+            if (!confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
+                return;
+            }
+
+            clearHistoryBtn.disabled = true;
+            clearHistoryBtn.textContent = 'Clearing...';
+
+            fetch('/users/api/history/clear/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    historyContent.innerHTML = `
+                        <div class="history-empty">
+                            <p>No history yet</p>
+                        </div>
+                    `;
+                    clearHistoryBtn.disabled = false;
+                    clearHistoryBtn.textContent = 'Clear';
+                } else {
+                    alert('Failed to clear history. Please try again.');
+                    clearHistoryBtn.disabled = false;
+                    clearHistoryBtn.textContent = 'Clear';
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing history:', error);
+                alert('Failed to clear history. Please try again.');
+                clearHistoryBtn.disabled = false;
+                clearHistoryBtn.textContent = 'Clear';
+            });
+        });
+
+        function deleteHistoryEntry(historyId, event) {
+            event.stopPropagation();
+            fetch('/users/api/history/' + historyId + '/delete/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const itemEl = event.target.closest('.history-item');
+                    if (itemEl) {
+                        const groupBody = itemEl.closest('.history-group-body');
+                        itemEl.remove();
+                        if (groupBody && !groupBody.querySelector('.history-item')) {
+                            const groupEl = groupBody.closest('.history-group');
+                            if (groupEl) groupEl.remove();
+                        }
+                        if (!historyContent.querySelector('.history-group')) {
+                            historyContent.innerHTML = '<div class="history-empty"><p>No runs yet</p></div>';
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error('Error deleting history entry:', err));
+        }
+        window.deleteHistoryEntry = deleteHistoryEntry;
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

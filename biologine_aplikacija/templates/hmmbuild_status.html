@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ project.name }} – HMMBUILD{% endblock %}
+
+{% block content %}
+{% include "_app_design.html" %}
+
+<div class="app-page">
+
+  <a href="{% url 'hmmbuild_form' %}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    New run
+  </a>
+
+  <div class="page-title">HMMBUILD</div>
+
+  {% if project.task_status == 'FAILURE' %}
+    {% url 'hmmbuild_form' as hmmbuild_form_url %}
+    {% include "_tool_actions.html" with tool_type="hmmbuild" project_id=project.id show_my_projects=True back_tool_param="hmmbuild" retry_url=hmmbuild_form_url retry_label="Try with other input" hide_delete=True %}
+  {% elif project.task_status != 'SUCCESS' %}
+    {% include "_tool_actions.html" with tool_type="hmmbuild" project_id=project.id show_my_projects=True back_tool_param="hmmbuild" %}
+  {% endif %}
+
+  {% if project.task_status != 'SUCCESS' %}
+  <div class="form-card">
+    <div class="status-line">
+      <span class="project-label">{{ project.name|default:"Untitled" }}</span>
+      <span class="status-pill {{ project.task_status|lower }}" id="status-badge">{{ project.task_status }}</span>
+    </div>
+
+    <div class="progress-wrap" id="progress-wrap" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+    </div>
+    <p class="progress-msg" id="progress-msg" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>Building HMM profile...</p>
+
+    <div id="error-container" {% if project.task_status != 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="notice err">
+        <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span id="error-message">{% if project.task_status == 'FAILURE' %}{% if project.result_text and project.result_text|slice:":6" == 'ERROR:' %}{{ project.result_text|slice:"6:" }}{% else %}Something went wrong. Please try again.{% endif %}{% endif %}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if project.task_status == 'SUCCESS' %}
+  <div class="results-card" id="hb-results">
+    <div class="results-header">
+      <div class="results-title-wrap">
+        <span class="results-title">Run Report</span>
+        {% if project.name %}<span class="results-filename">{{ project.name }}</span>{% endif %}
+      </div>
+      <div class="results-actions-cluster">
+        <span class="results-status ok">✓ COMPLETE</span>
+        <button type="button" class="rr-icon-btn" onclick="rrToggleCard(this)" title="Collapse/expand">
+          <svg class="rr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="results-body">
+      {% if input_warning %}
+      <div class="notice">
+        <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>{{ input_warning }}</span>
+      </div>
+      {% endif %}
+      <div class="report-summary">
+        <div class="comment"># HMMBUILD - profile summary</div>
+        {% if hmm_stats.name %}
+        <div class="row"><span class="lbl">Profile name</span><span class="val">{{ hmm_stats.name }}</span></div>
+        {% endif %}
+        <div class="row"><span class="lbl">Alphabet</span><span class="val">{{ hmm_stats.alph|default:"-"|upper }}</span></div>
+        <div class="row"><span class="lbl">Sequences (NSEQ)</span><span class="val">{{ hmm_stats.nseq|default:"-" }}</span></div>
+        <div class="row"><span class="lbl">Model length</span><span class="val">{{ hmm_stats.leng|default:"-" }}</span>{% if hmm_stats.leng %}<span class="note">match states</span>{% endif %}</div>
+        <div class="row"><span class="lbl">Created</span><span class="val">{{ project.created_at|date:"Y-m-d H:i" }}</span></div>
+      </div>
+
+      {% include "_parameter_overrides.html" %}
+
+      <div class="result-actions">
+        {% if can_download_input and project.msa_file %}
+        <a class="btn-secondary" href="{% url 'hmmbuild_input_download' project_id=project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download input alignment
+        </a>
+        {% endif %}
+        {% if can_download_output %}
+        <a href="{% url 'hmmsearch_form' %}?from_hmmbuild={{ project.id }}" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Use in HMMSEARCH
+        </a>
+        <a href="{% url 'hmmemit_form' %}?from_hmmbuild={{ project.id }}" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Emit sequences
+        </a>
+        {% endif %}
+        <a href="{% url 'my-projects' %}?tool=hmmbuild" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to My Projects
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if hmm_model_preview %}
+    {% if can_download_output and hmm_model_name %}
+      {% url 'hmmbuild_output_download' project_id=project.id as hmm_dl %}
+      {% include "_result_card.html" with card_id="hmm-model" result_title="Output preview" result_subtitle="HMM profile (.hmm)" result_pre=hmm_model_preview download_url=hmm_dl download_label="Download .hmm" start_open=True truncated_note=hmm_preview_note %}
+    {% else %}
+      {% include "_result_card.html" with card_id="hmm-model" result_title="Output preview" result_subtitle="HMM profile (.hmm)" result_pre=hmm_model_preview start_open=True truncated_note=hmm_preview_note %}
+    {% endif %}
+  {% endif %}
+
+  {% if annotated_preview %}
+    {% if can_download_output %}{% url 'hmmbuild_annotated_download' project_id=project.id as ann_dl %}{% endif %}
+    {% include "_result_card.html" with card_id="hmm-annotated" result_title="Annotated input MSA" result_subtitle="Source alignment with match columns marked (-O)" result_pre=annotated_preview download_url=ann_dl download_label="Download .sto" truncated_note=annotated_preview_note %}
+  {% endif %}
+  {% endif %}
+
+</div>
+
+<script src="{% static 'js/task_status_poll.js' %}"></script>
+<script>
+  initTaskStatusPoll({
+    taskId: "{{ project.task_id }}",
+    statusUrl: "{% url 'hmmbuild_task_status' task_id='TASK_ID' %}".replace('TASK_ID', "{{ project.task_id }}"),
+    initialStatus: "{{ project.task_status }}",
+    resultsAnchorId: 'hb-results',
+  });
+</script>
+{% endblock %}

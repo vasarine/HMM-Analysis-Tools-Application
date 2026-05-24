@@ -1,0 +1,498 @@
+{
+  "tool_id": "hmmbuild",
+  "display_name": "HMMBUILD",
+  "executable": "hmmbuild",
+  "fixed_args": [],
+  "parameters": [
+    {
+      "name": "name",
+      "label": "HMM profile name (-n)",
+      "section": "Profile identity",
+      "flag": "-n",
+      "type": "string",
+      "default": "",
+      "help_text": "Name the HMM profile."
+    },
+    {
+      "name": "informat",
+      "label": "Input alignment format (--informat)",
+      "section": "Profile identity",
+      "flag": "--informat",
+      "type": "select",
+      "default": null,
+      "options": [
+        "stockholm",
+        "a2m",
+        "afa",
+        "psiblast",
+        "clustal",
+        "phylip",
+        "phylips",
+        "selex"
+      ],
+      "help_text": "Force input MSA format instead of autodetecting."
+    },
+    {
+      "name": "alphabet",
+      "label": "Alphabet",
+      "section": "Alphabet",
+      "type": "radio_group",
+      "default": "auto",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Auto-detect (default)",
+          "flag": null
+        },
+        {
+          "value": "amino",
+          "label": "--amino \u00b7 Force protein",
+          "flag": "--amino"
+        },
+        {
+          "value": "dna",
+          "label": "--dna \u00b7 Force DNA",
+          "flag": "--dna"
+        },
+        {
+          "value": "rna",
+          "label": "--rna \u00b7 Force RNA",
+          "flag": "--rna"
+        }
+      ],
+      "help_text": "HMMER auto-guesses the alphabet from the input alignment. Force when guess is wrong."
+    },
+    {
+      "name": "architecture",
+      "label": "Model construction strategy",
+      "section": "Model architecture",
+      "type": "radio_group",
+      "default": "fast",
+      "options": [
+        {
+          "value": "fast",
+          "label": "--fast \u00b7 Symfrac-based column selection (default)",
+          "flag": "--fast"
+        },
+        {
+          "value": "hand",
+          "label": "--hand \u00b7 Use reference annotation from MSA (#=GC RF)",
+          "flag": "--hand"
+        }
+      ],
+      "help_text": "--fast assigns columns as match states automatically; --hand requires #=GC RF annotation in the input alignment."
+    },
+    {
+      "name": "symfrac",
+      "label": "Match-column symbol fraction (--symfrac)",
+      "section": "Model architecture",
+      "flag": "--symfrac",
+      "type": "float",
+      "default": 0.5,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Columns with >= this fraction of non-gap residues become match states.",
+      "depends_on": {
+        "field": "architecture",
+        "value": "fast"
+      }
+    },
+    {
+      "name": "fragthresh",
+      "label": "Fragment threshold (--fragthresh)",
+      "section": "Model architecture",
+      "flag": "--fragthresh",
+      "type": "float",
+      "default": 0.5,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Sequences shorter than (this \u00d7 alignment length) are flagged as fragments."
+    },
+    {
+      "name": "relative_weighting",
+      "label": "Relative sequence weighting strategy",
+      "section": "Relative weighting",
+      "type": "radio_group",
+      "default": "wpb",
+      "options": [
+        {
+          "value": "wpb",
+          "label": "--wpb \u00b7 Henikoff position-based (default)",
+          "flag": "--wpb"
+        },
+        {
+          "value": "wgsc",
+          "label": "--wgsc \u00b7 Gerstein/Sonnhammer/Chothia tree weights",
+          "flag": "--wgsc"
+        },
+        {
+          "value": "wblosum",
+          "label": "--wblosum \u00b7 BLOSUM filter weights",
+          "flag": "--wblosum"
+        },
+        {
+          "value": "wnone",
+          "label": "--wnone \u00b7 No weighting (all weights = 1)",
+          "flag": "--wnone"
+        },
+        {
+          "value": "wgiven",
+          "label": "--wgiven \u00b7 Use weights as given in MSA file",
+          "flag": "--wgiven"
+        }
+      ]
+    },
+    {
+      "name": "wid",
+      "label": "BLOSUM identity cutoff (--wid)",
+      "section": "Relative weighting",
+      "flag": "--wid",
+      "type": "float",
+      "default": 0.62,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Identity threshold used by --wblosum filter weights.",
+      "depends_on": {
+        "field": "relative_weighting",
+        "value": "wblosum"
+      }
+    },
+    {
+      "name": "effective_weighting",
+      "label": "Effective sequence weighting strategy",
+      "section": "Effective sequence number",
+      "type": "radio_group",
+      "default": "eent",
+      "options": [
+        {
+          "value": "eent",
+          "label": "--eent \u00b7 Adjust to a relative-entropy target (default)",
+          "flag": "--eent"
+        },
+        {
+          "value": "eclust",
+          "label": "--eclust \u00b7 Effective N = # single-linkage clusters",
+          "flag": "--eclust"
+        },
+        {
+          "value": "enone",
+          "label": "--enone \u00b7 No weighting; just use nseq",
+          "flag": "--enone"
+        }
+      ],
+      "help_text": "Pick how HMMER computes the 'effective' number of sequences. To set the number explicitly use --eset below."
+    },
+    {
+      "name": "eset",
+      "label": "Override: set effective sequence number (--eset)",
+      "section": "Effective sequence number",
+      "flag": "--eset",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "help_text": "Override the strategy above and force this effective N. HMMER rejects --eset together with explicit --eclust or --enone, so use it only with the default --eent strategy.",
+      "depends_on": {
+        "field": "effective_weighting",
+        "value": "eent"
+      }
+    },
+    {
+      "name": "ere",
+      "label": "Minimum relative entropy per position (--ere)",
+      "section": "Effective sequence number",
+      "flag": "--ere",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "help_text": "Only used with --eent. Leave blank for HMMER's alphabet-dependent default (0.59 protein / 0.45 nucleotide).",
+      "depends_on": {
+        "field": "effective_weighting",
+        "value": "eent"
+      }
+    },
+    {
+      "name": "esigma",
+      "label": "Sigma for --eent (--esigma)",
+      "section": "Effective sequence number",
+      "flag": "--esigma",
+      "type": "float",
+      "default": 45.0,
+      "min": 0.0,
+      "help_text": "Smoothing parameter for the entropy-targeting calculation.",
+      "depends_on": {
+        "field": "effective_weighting",
+        "value": "eent"
+      }
+    },
+    {
+      "name": "eid",
+      "label": "Fractional identity cutoff for --eclust (--eid)",
+      "section": "Effective sequence number",
+      "flag": "--eid",
+      "type": "float",
+      "default": 0.62,
+      "min": 0.0,
+      "max": 1.0,
+      "depends_on": {
+        "field": "effective_weighting",
+        "value": "eclust"
+      }
+    },
+    {
+      "name": "prior",
+      "label": "Prior strategy",
+      "section": "Priors",
+      "type": "radio_group",
+      "default": "default",
+      "options": [
+        {
+          "value": "default",
+          "label": "HMMER mixture Dirichlet (default)",
+          "flag": null
+        },
+        {
+          "value": "pnone",
+          "label": "--pnone \u00b7 No prior; parameters are frequencies",
+          "flag": "--pnone"
+        },
+        {
+          "value": "plaplace",
+          "label": "--plaplace \u00b7 Laplace +1 prior",
+          "flag": "--plaplace"
+        }
+      ]
+    },
+    {
+      "name": "singlemx_mode",
+      "label": "Substitution matrix scoring for single-sequence input",
+      "section": "Single-sequence scoring",
+      "type": "radio_group",
+      "default": "off",
+      "options": [
+        {
+          "value": "off",
+          "label": "Off (use mixture Dirichlet \u2014 default)",
+          "flag": null
+        },
+        {
+          "value": "on",
+          "label": "--singlemx \u00b7 Use a substitution matrix",
+          "flag": "--singlemx"
+        }
+      ],
+      "help_text": "Only meaningful when the input alignment contains a single sequence."
+    },
+    {
+      "name": "mx_source",
+      "label": "Matrix source",
+      "section": "Single-sequence scoring",
+      "type": "radio_group",
+      "default": "builtin",
+      "options": [
+        {
+          "value": "builtin",
+          "label": "Use a built-in matrix (--mx)",
+          "flag": null
+        },
+        {
+          "value": "custom",
+          "label": "Upload a custom matrix file (--mxfile)",
+          "flag": null
+        }
+      ],
+      "help_text": "Pick one. --mx and --mxfile are mutually exclusive.",
+      "depends_on": {
+        "field": "singlemx_mode",
+        "value": "on"
+      }
+    },
+    {
+      "name": "mx",
+      "label": "Built-in substitution matrix (--mx)",
+      "section": "Single-sequence scoring",
+      "flag": "--mx",
+      "type": "select",
+      "default": null,
+      "options": [
+        "BLOSUM62",
+        "BLOSUM45",
+        "BLOSUM50",
+        "BLOSUM80",
+        "BLOSUM90",
+        "PAM30",
+        "PAM70",
+        "PAM120",
+        "PAM240",
+        "DNA1"
+      ],
+      "help_text": "Pick a built-in matrix. Leave blank for HMMER's default (BLOSUM62 / DNA1).",
+      "depends_on": {
+        "field": "mx_source",
+        "value": "builtin"
+      }
+    },
+    {
+      "name": "mxfile",
+      "label": "Custom substitution matrix file (--mxfile)",
+      "section": "Single-sequence scoring",
+      "flag": "--mxfile",
+      "type": "file",
+      "default": null,
+      "help_text": "Upload a BLAST/FASTA-format substitution matrix. Square matrices only.",
+      "depends_on": {
+        "field": "mx_source",
+        "value": "custom"
+      }
+    },
+    {
+      "name": "popen",
+      "label": "Gap open probability (--popen)",
+      "section": "Single-sequence scoring",
+      "flag": "--popen",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 0.499,
+      "help_text": "Override gap-open probability with --singlemx. Default 0.02 (protein), 0.031 (nucleic). HMMER requires 0 <= x < 0.5.",
+      "depends_on": {
+        "field": "singlemx_mode",
+        "value": "on"
+      }
+    },
+    {
+      "name": "pextend",
+      "label": "Gap extend probability (--pextend)",
+      "section": "Single-sequence scoring",
+      "flag": "--pextend",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 0.999,
+      "help_text": "Override gap-extend probability with --singlemx. Default 0.4 (protein), 0.75 (nucleic). HMMER requires 0 <= x < 1.",
+      "depends_on": {
+        "field": "singlemx_mode",
+        "value": "on"
+      }
+    },
+    {
+      "name": "EmL",
+      "label": "MSV-filter calibration: sequence length (--EmL)",
+      "section": "E-value calibration (expert)",
+      "flag": "--EmL",
+      "type": "number",
+      "default": 200,
+      "min": 1,
+      "help_text": "Expert: length of simulated sequences used to estimate MSV-filter mu."
+    },
+    {
+      "name": "EmN",
+      "label": "MSV-filter calibration: # sequences (--EmN)",
+      "section": "E-value calibration (expert)",
+      "flag": "--EmN",
+      "type": "number",
+      "default": 200,
+      "min": 1,
+      "help_text": "Expert: number of simulated sequences for MSV mu estimation."
+    },
+    {
+      "name": "EvL",
+      "label": "Viterbi-filter calibration: sequence length (--EvL)",
+      "section": "E-value calibration (expert)",
+      "flag": "--EvL",
+      "type": "number",
+      "default": 200,
+      "min": 1
+    },
+    {
+      "name": "EvN",
+      "label": "Viterbi-filter calibration: # sequences (--EvN)",
+      "section": "E-value calibration (expert)",
+      "flag": "--EvN",
+      "type": "number",
+      "default": 200,
+      "min": 1
+    },
+    {
+      "name": "EfL",
+      "label": "Forward calibration: sequence length (--EfL)",
+      "section": "E-value calibration (expert)",
+      "flag": "--EfL",
+      "type": "number",
+      "default": 100,
+      "min": 1
+    },
+    {
+      "name": "EfN",
+      "label": "Forward calibration: # sequences (--EfN)",
+      "section": "E-value calibration (expert)",
+      "flag": "--EfN",
+      "type": "number",
+      "default": 200,
+      "min": 1
+    },
+    {
+      "name": "Eft",
+      "label": "Forward calibration: tail mass (--Eft)",
+      "section": "E-value calibration (expert)",
+      "flag": "--Eft",
+      "type": "float",
+      "default": 0.04,
+      "min": 0.001,
+      "max": 0.999,
+      "help_text": "Tail mass fraction used in Forward tau fit. HMMER requires 0 < x < 1."
+    },
+    {
+      "name": "w_beta",
+      "label": "Window length tail mass (--w_beta)",
+      "section": "Window length & inserts",
+      "flag": "--w_beta",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Upper bound W is set such that fraction of sequences >= W is < this. Default 1e-7."
+    },
+    {
+      "name": "w_length",
+      "label": "Override window length (--w_length)",
+      "section": "Window length & inserts",
+      "flag": "--w_length",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "help_text": "Hard upper bound on instance length W. Must be greater than model length."
+    },
+    {
+      "name": "maxinsertlen",
+      "label": "Maximum expected insert length (--maxinsertlen)",
+      "section": "Window length & inserts",
+      "flag": "--maxinsertlen",
+      "type": "number",
+      "default": null,
+      "min": 5,
+      "help_text": "Restrict insert length parameterisation so expected insert length at each position is no more than this. HMMER requires n >= 5."
+    },
+    {
+      "name": "seed",
+      "label": "Random seed (--seed)",
+      "section": "Reproducibility & performance",
+      "flag": "--seed",
+      "type": "number",
+      "default": 42,
+      "min": 0,
+      "max": 999999,
+      "help_text": "Use 0 for a non-deterministic, arbitrary seed."
+    },
+    {
+      "name": "cpu",
+      "label": "Parallel CPU workers (--cpu)",
+      "section": "Reproducibility & performance",
+      "flag": "--cpu",
+      "type": "number",
+      "default": 2,
+      "min": 1,
+      "max": 8,
+      "help_text": "Number of parallel worker threads. Server defaults to 2."
+    }
+  ]
+}

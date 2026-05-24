@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Workflows – HMM Analysis Tools{% endblock %}
+
+{% block content %}
+<div class="wf-page">
+  <a href="{% url 'home' %}" class="wf-back">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Home
+  </a>
+
+  <div class="wf-header">
+    <div>
+      <h1 class="wf-title">Workflows</h1>
+      <div class="wf-subtitle">Automated pipelines - chain preprocessing tools into one run</div>
+    </div>
+    <a href="{% url 'workflow_builder_new' %}" class="wf-btn-primary">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New workflow
+    </a>
+  </div>
+
+  <div class="wf-section-label">Templates</div>
+  <div class="wf-grid">
+    {% for tmpl in templates %}
+    <div class="wf-card">
+      <div class="wf-card-name">{{ tmpl.name }}</div>
+      <div class="wf-card-desc">{{ tmpl.description }}</div>
+
+      <div class="wf-steps">
+        {% for step in tmpl.steps.all %}
+        <span class="wf-step-chip" style="background:{{ step.color }}1a; color:{{ step.color }}; border-color:{{ step.color }}55;">{{ step.label }}</span>
+        {% if not forloop.last %}<span class="wf-arrow">›</span>{% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="wf-card-actions">
+        <a href="{% url 'workflow_builder_new' %}?template={{ tmpl.id }}" class="wf-btn-use">Use template</a>
+        <a href="{% url 'workflow_run_start' tmpl.id %}" class="wf-btn-run">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if user.is_authenticated %}
+  <div class="wf-section-label">My workflows</div>
+  {% if user_workflows %}
+  <div class="wf-grid">
+    {% for wf in user_workflows %}
+    <div class="wf-card">
+      <div class="wf-card-name">{{ wf.name }}</div>
+      {% if wf.description %}
+      <div class="wf-card-desc">{{ wf.description }}</div>
+      {% endif %}
+
+      <div class="wf-steps">
+        {% for step in wf.steps.all %}
+        <span class="wf-step-chip" style="background:{{ step.color }}1a; color:{{ step.color }}; border-color:{{ step.color }}55;">{{ step.label }}</span>
+        {% if not forloop.last %}<span class="wf-arrow">›</span>{% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="wf-card-actions">
+        <a href="{% url 'workflow_run_start' wf.id %}" class="wf-btn-use">
+          <svg width="12" height="12" style="margin-right:4px;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run
+        </a>
+        <a href="{% url 'workflow_builder_edit' wf.id %}" class="wf-btn-run">Edit</a>
+        <form id="del-wf-{{ wf.id }}" method="post" action="{% url 'delete_workflow' wf.id %}" style="display:none;">{% csrf_token %}</form>
+        <button type="button" class="wf-btn-delete"
+                onclick="deleteWorkflowFromList('del-wf-{{ wf.id }}', '{{ wf.name|escapejs }}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Delete
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="wf-empty">
+    <div class="wf-empty-title">No saved workflows yet</div>
+    <div class="wf-empty-desc">Create a custom pipeline by chaining preprocessing steps together,<br>or start from one of the templates above.</div>
+    <a href="{% url 'workflow_builder_new' %}" class="wf-btn-primary">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Create your first workflow
+    </a>
+  </div>
+  {% endif %}
+  {% endif %}
+
+</div>
+<script>
+(function () {
+  const SCROLL_KEY = 'workflow-list-scroll-y';
+
+  window.deleteWorkflowFromList = function (formId, workflowName) {
+    if (!confirm('Delete pipeline "' + workflowName + '"? Your completed runs will be kept.')) return;
+    try {
+      sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
+    } catch (e) {}
+
+    const form = document.getElementById(formId);
+    if (form) form.submit();
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    let y = null;
+    try {
+      y = sessionStorage.getItem(SCROLL_KEY);
+      sessionStorage.removeItem(SCROLL_KEY);
+    } catch (e) {}
+    if (y === null) return;
+
+    requestAnimationFrame(function () {
+      window.scrollTo({ top: parseInt(y, 10) || 0, left: 0, behavior: 'auto' });
+    });
+  });
+})();
+</script>
+{% endblock %}

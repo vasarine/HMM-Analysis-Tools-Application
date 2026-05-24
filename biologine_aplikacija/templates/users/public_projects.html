@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mp-page pp-page">
+
+  <h1 class="mp-title">Public Projects</h1>
+
+  <div class="mp-tabs">
+    <a href="{% url 'public-projects' %}"
+       class="mp-tab {% if not active_tool %}mp-tab-active{% endif %}">All</a>
+    <a href="{% url 'public-projects' %}?tool=hmmbuild"
+       class="mp-tab {% if active_tool == 'hmmbuild' %}mp-tab-active{% endif %}">HMMBUILD</a>
+    <a href="{% url 'public-projects' %}?tool=hmmemit"
+       class="mp-tab {% if active_tool == 'hmmemit' %}mp-tab-active{% endif %}">HMMEMIT</a>
+    <a href="{% url 'public-projects' %}?tool=hmmsearch"
+       class="mp-tab {% if active_tool == 'hmmsearch' %}mp-tab-active{% endif %}">HMMSEARCH</a>
+    <a href="{% url 'public-projects' %}?tool=preprocessing"
+       class="mp-tab {% if active_tool == 'preprocessing' %}mp-tab-active{% endif %}">Preprocessing</a>
+    <a href="{% url 'public-projects' %}?tool=workflows"
+       class="mp-tab {% if active_tool == 'workflows' %}mp-tab-active{% endif %}">Workflows</a>
+  </div>
+
+  {% if active_tool == 'preprocessing' %}
+  <div class="mp-subtabs">
+    <a href="{% url 'public-projects' %}?tool=preprocessing"
+       class="mp-subtab {% if not active_preproc_type %}is-active{% endif %}">All</a>
+    <a href="{% url 'public-projects' %}?tool=preprocessing&amp;type=fasta_validator"
+       class="mp-subtab {% if active_preproc_type == 'fasta_validator' %}is-active{% endif %}">FASTA Validator</a>
+    <a href="{% url 'public-projects' %}?tool=preprocessing&amp;type=sequence_cleaner"
+       class="mp-subtab {% if active_preproc_type == 'sequence_cleaner' %}is-active{% endif %}">Sequence Cleaner</a>
+    <a href="{% url 'public-projects' %}?tool=preprocessing&amp;type=msa"
+       class="mp-subtab {% if active_preproc_type == 'msa' %}is-active{% endif %}">MSA</a>
+    <a href="{% url 'public-projects' %}?tool=preprocessing&amp;type=format_converter"
+       class="mp-subtab {% if active_preproc_type == 'format_converter' %}is-active{% endif %}">Format Converter</a>
+  </div>
+  {% endif %}
+
+  {% if projects %}
+  <div class="projects-toolbar pp-toolbar">
+    <div class="projects-toolbar-left">
+      <span class="projects-count">{{ projects|length }} public project{{ projects|length|pluralize }}</span>
+    </div>
+  </div>
+
+  {% for project in projects %}
+  <div class="mp-card pp-card" data-tool="{{ project.tool_type }}">
+    <div class="mp-card-body pp-card-body">
+      <div class="mp-main">
+        <div class="mp-name-row pp-name-row">
+          <span class="mp-name">{{ project.name|default:"Untitled project" }}</span>
+
+          {% if project.tool_type == 'hmmbuild' %}
+            <span class="mp-badge mp-b-hmmbuild">HMMBUILD</span>
+          {% elif project.tool_type == 'hmmemit' %}
+            <span class="mp-badge mp-b-hmmemit">HMMEMIT</span>
+          {% elif project.tool_type == 'hmmsearch' %}
+            <span class="mp-badge mp-b-hmmsearch">HMMSEARCH</span>
+          {% elif project.tool_type == 'fasta_validate' %}
+            <span class="mp-badge mp-b-preproc">FASTA VALIDATE</span>
+          {% elif project.tool_type == 'sequence_cleaner' %}
+            <span class="mp-badge mp-b-preproc">SEQ CLEANER</span>
+          {% elif project.tool_type == 'clustalo' %}
+            <span class="mp-badge mp-b-preproc">CLUSTALO</span>
+          {% elif project.tool_type == 'format_convert' %}
+            <span class="mp-badge mp-b-preproc">FORMAT CONVERT</span>
+          {% elif project.tool_type == 'workflow_run' %}
+            <span class="mp-badge mp-b-pipeline">WORKFLOW</span>
+          {% elif project.tool_type %}
+            <span class="mp-badge mp-b-preproc">{{ project.tool_type|upper }}</span>
+          {% endif %}
+
+          <span class="mp-status mp-s-done"><span class="mp-status-dot"></span>Completed</span>
+          <span class="mp-status mp-s-public"><span class="mp-status-dot"></span>Public</span>
+          <span class="pp-author">by {{ project.user.username|default:"Anonymous" }}</span>
+          <span class="mp-date">{{ project.created_at|date:"Y-m-d H:i" }}</span>
+        </div>
+
+        {% if project.tool_type == 'workflow_run' and project.workflow_steps %}
+        <div class="mp-file-row mp-file-row--summary">
+          <span class="mp-fl">Summary</span>
+          <span class="mp-file-items">
+            <span class="mp-summary-inline">{{ project.workflow_steps|length }} step{{ project.workflow_steps|length|pluralize }} - {% for step in project.workflow_steps %}<span style="color:{{ step.color }}; font-weight:600;">{{ step.label }}</span>{% if not forloop.last %}&nbsp;<span style="color:#c8d0db;">&rsaquo;</span>&nbsp;{% endif %}{% endfor %}</span>
+          </span>
+        </div>
+        {% elif project.summary_line %}
+        <div class="mp-file-row mp-file-row--summary">
+          <span class="mp-fl">Summary</span>
+          <span class="mp-file-items">
+            <span class="mp-summary-inline">{{ project.summary_line }}</span>
+          </span>
+        </div>
+        {% elif project.preview_fallback %}
+        <div class="mp-file-row mp-file-row--summary">
+          <span class="mp-fl">Summary</span>
+          <span class="mp-file-items">
+            <span class="mp-summary-inline">{{ project.preview_fallback }}</span>
+          </span>
+        </div>
+        {% endif %}
+
+        {% if project.preview.text %}
+        <div class="mp-file-row mp-file-row--preview">
+          <span class="mp-fl">Preview</span>
+          <span class="mp-file-items">
+            <button type="button" class="mp-expand-link" onclick="togglePublicPreview(this)">
+              <span class="mp-expand-text">Show {{ project.preview.label|default:"result" }} preview</span>
+              <svg class="mp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </span>
+        </div>
+        <div class="mp-preview-content" style="display:none;">
+          <pre class="mp-preview-pre">{{ project.preview.text }}</pre>
+          <div class="mp-preview-note">{{ project.preview.note }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="mp-card-footer pp-card-footer">
+      <a href="{% url 'shared-project' project.tool_type project.share_token %}?from=public-projects" class="mp-btn mp-btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        View
+      </a>
+
+      {% if project.share_outputs %}
+        {% if project.tool_type == 'hmmbuild' and project.hmm_file %}
+          <a href="{% url 'hmmbuild_output_download' project.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+        {% elif project.tool_type == 'hmmsearch' and project.out_file %}
+          <a href="{% url 'hmmsearch_output_download' project.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+        {% elif project.tool_type == 'hmmemit' and project.output_file %}
+          <a href="{% url 'hmmemit_output_download' project.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+        {% elif project.tool_type == 'sequence_cleaner' and project.output_fasta %}
+          <a href="{% url 'fasta_clean_download' project.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+        {% elif project.tool_type == 'clustalo' and project.output_alignment %}
+          <a href="{% url 'clustalo_download' project.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+        {% elif project.tool_type == 'format_convert' and project.output_file %}
+          <a href="{% url 'format_convert_download' project.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+        {% elif project.tool_type == 'workflow_run' and project.output_file %}
+          <a href="{% url 'workflow_run_download' project.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if page_obj.has_other_pages %}
+  <div class="mp-pager">
+    {% if page_obj.has_previous %}
+      <a href="?{% if active_tool %}tool={{ active_tool }}&amp;{% endif %}{% if active_preproc_type %}type={{ active_preproc_type }}&amp;{% endif %}page=1" class="mp-btn">First</a>
+      <a href="?{% if active_tool %}tool={{ active_tool }}&amp;{% endif %}{% if active_preproc_type %}type={{ active_preproc_type }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" class="mp-btn">Previous</a>
+    {% endif %}
+    <span class="mp-pager-text">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?{% if active_tool %}tool={{ active_tool }}&amp;{% endif %}{% if active_preproc_type %}type={{ active_preproc_type }}&amp;{% endif %}page={{ page_obj.next_page_number }}" class="mp-btn">Next</a>
+      <a href="?{% if active_tool %}tool={{ active_tool }}&amp;{% endif %}{% if active_preproc_type %}type={{ active_preproc_type }}&amp;{% endif %}page={{ page_obj.paginator.num_pages }}" class="mp-btn">Last</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="mp-empty pp-empty">
+    <p class="mp-empty-title">No public projects yet.</p>
+    <p class="mp-empty-sub">Completed public results will appear here.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function togglePublicPreview(btn) {
+  const card = btn.closest('.pp-card');
+  const content = card.querySelector('.mp-preview-content');
+  const chevron = btn.querySelector('.mp-chev');
+  const label = btn.querySelector('.mp-expand-text');
+  const open = content.style.display !== 'none';
+
+  if (!btn.dataset.closedText && label) {
+    btn.dataset.closedText = label.textContent;
+  }
+
+  content.style.display = open ? 'none' : 'block';
+  if (chevron) chevron.classList.toggle('mp-open', !open);
+  if (label) label.textContent = open ? btn.dataset.closedText : 'Hide preview';
+}
+</script>
+{% endblock %}

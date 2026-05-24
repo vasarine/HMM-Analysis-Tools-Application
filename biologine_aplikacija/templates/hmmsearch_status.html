@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ project.name }} – HMMSEARCH{% endblock %}
+
+{% block content %}
+{% include "_app_design.html" %}
+
+<div class="app-page">
+
+  <a href="{% url 'hmmsearch_form' %}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    New run
+  </a>
+
+  <div class="page-title">HMMSEARCH</div>
+
+  {% if project.task_status == 'FAILURE' %}
+    {% url 'hmmsearch_form' as hmmsearch_form_url %}
+    {% include "_tool_actions.html" with tool_type="hmmsearch" project_id=project.id show_my_projects=True back_tool_param="hmmsearch" retry_url=hmmsearch_form_url retry_label="Try with other input" hide_delete=True %}
+  {% elif project.task_status != 'SUCCESS' %}
+    {% include "_tool_actions.html" with tool_type="hmmsearch" project_id=project.id show_my_projects=True back_tool_param="hmmsearch" %}
+  {% endif %}
+
+  {% if project.task_status != 'SUCCESS' %}
+  <div class="form-card">
+    <div class="status-line">
+      <span class="project-label">{{ project.name|default:"Untitled" }}</span>
+      <span class="status-pill {{ project.task_status|lower }}" id="task-status">{{ project.task_status }}</span>
+    </div>
+    <div class="progress-wrap" id="progress-wrap" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+    </div>
+    <p class="progress-msg" id="task-message" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>Running...</p>
+
+    <div id="error-container" {% if project.task_status != 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="notice err">
+        <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span id="error-message">{% if project.task_status == 'FAILURE' %}{% if project.result_text and project.result_text|slice:":6" == 'ERROR:' %}{{ project.result_text|slice:"6:" }}{% else %}The search could not be completed. Please check your inputs and try again.{% endif %}{% endif %}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if project.task_status == 'SUCCESS' %}
+  <div class="results-card" id="hs-results">
+    <div class="results-header">
+      <div class="results-title-wrap">
+        <span class="results-title">Run Report</span>
+        {% if project.name %}<span class="results-filename">{{ project.name }}</span>{% endif %}
+      </div>
+      <div class="results-actions-cluster">
+        <span class="results-status ok">✓ COMPLETE</span>
+        <button type="button" class="rr-icon-btn" onclick="rrToggleCard(this)" title="Collapse/expand">
+          <svg class="rr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="results-body">
+      <div class="report-summary">
+        <div class="comment"># HMMSEARCH - search summary</div>
+        {% if project.hmm_source == 'pfam' %}
+        <div class="row"><span class="lbl">HMM source</span><span class="val">Pfam</span><span class="note">{{ project.external_hmm_id }}</span></div>
+        {% elif project.hmm_source == 'interpro' %}
+        <div class="row"><span class="lbl">HMM source</span><span class="val">InterPro</span><span class="note">{{ project.external_hmm_id }}</span></div>
+        {% else %}
+        <div class="row"><span class="lbl">HMM source</span><span class="val">Uploaded</span></div>
+        {% endif %}
+        {% if db_source %}
+        <div class="row">
+          <span class="lbl">FASTA database</span>
+          {% if db_source.mode == 'previous_step' %}
+            <span class="val">From step {{ db_source.step_number }}</span>
+            <span class="note">{{ db_source.filename }}</span>
+          {% else %}
+            <span class="val">Uploaded</span>
+            <span class="note">{{ db_source.filename }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="row"><span class="lbl">Target hits</span><span class="val">{{ target_hits|default:0 }}</span><span class="note">significant matches</span></div>
+        <div class="row"><span class="lbl">Created</span><span class="val">{{ project.created_at|date:"Y-m-d H:i" }}</span></div>
+      </div>
+
+      {% include "_parameter_overrides.html" %}
+
+      <div class="result-actions">
+        {% if can_download_input and project.fasta_file %}
+        <a class="btn-secondary" href="{% url 'hmmsearch_fasta_download' project_id=project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download FASTA database
+        </a>
+        {% endif %}
+        {% if can_download_input and project.hmm_source == 'upload' and project.hmm_file %}
+        <a class="btn-secondary" href="{% url 'hmmsearch_hmm_input_download' project_id=project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download HMM input
+        </a>
+        {% endif %}
+        <a href="{% url 'my-projects' %}?tool=hmmsearch" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to My Projects
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if result_preview %}
+    {% if can_download_output and out_filename %}{% url 'hmmsearch_output_download' project_id=project.id as out_dl %}{% endif %}
+    {% include "_result_card.html" with card_id="search-out" result_title="Output preview" result_subtitle="Search results (.out)" result_pre=result_preview download_url=out_dl download_label="Download .out" start_open=True truncated_note=result_preview_note %}
+  {% endif %}
+
+  {% if tblout_preview %}
+    {% if can_download_output and tblout_filename %}{% url 'hmmsearch_output_download_typed' project_id=project.id file_type='tblout' as tbl_dl %}{% endif %}
+    {% include "_result_card.html" with card_id="search-tblout" result_title="Per-target table" result_subtitle="tblout" result_pre=tblout_preview download_url=tbl_dl download_label="Download .tblout" truncated_note=tblout_preview_note %}
+  {% endif %}
+
+  {% if domtbl_preview %}
+    {% if can_download_output and domtbl_filename %}{% url 'hmmsearch_output_download_typed' project_id=project.id file_type='domtbl' as dom_dl %}{% endif %}
+    {% include "_result_card.html" with card_id="search-domtbl" result_title="Per-domain table" result_subtitle="domtblout" result_pre=domtbl_preview download_url=dom_dl download_label="Download .domtbl" truncated_note=domtbl_preview_note %}
+  {% endif %}
+
+  {% if pfamtbl_preview %}
+    {% if can_download_output %}{% url 'hmmsearch_output_download_typed' project_id=project.id file_type='pfamtbl' as pfam_dl %}{% endif %}
+    {% include "_result_card.html" with card_id="search-pfamtbl" result_title="Pfam-format table" result_subtitle="pfamtblout (per-target + per-domain)" result_pre=pfamtbl_preview download_url=pfam_dl download_label="Download .pfamtbl" truncated_note=pfamtbl_preview_note %}
+  {% endif %}
+
+  {% if hits_msa_preview %}
+    {% if can_download_output %}{% url 'hmmsearch_output_download_typed' project_id=project.id file_type='hits_msa' as hits_dl %}{% endif %}
+    {% include "_result_card.html" with card_id="search-hits-msa" result_title="Hits alignment" result_subtitle="Stockholm MSA of significant hits (-A)" result_pre=hits_msa_preview download_url=hits_dl download_label="Download .sto" truncated_note=hits_msa_preview_note %}
+  {% endif %}
+  {% endif %}
+
+</div>
+
+<script src="{% static 'js/task_status_poll.js' %}"></script>
+<script>
+  initTaskStatusPoll({
+    taskId: "{{ project.task_id }}",
+    statusUrl: "{% url 'hmmsearch_task_status' task_id='TASK_ID' %}".replace('TASK_ID', "{{ project.task_id }}"),
+    initialStatus: "{{ project.task_status }}",
+    resultsAnchorId: 'hs-results',
+    messageId: 'task-message',
+    badgeId: 'task-status',
+  });
+</script>
+{% endblock %}

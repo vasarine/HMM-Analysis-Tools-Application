@@ -1,0 +1,904 @@
+{% extends "base.html" %}
+
+{% block title %}Workflow Builder – HMM Analysis Tools{% endblock %}
+
+{% block content %}
+<style>
+  .wb-pill { display:none; }
+  .wb-heading {
+    font-size:24px; font-weight:800; letter-spacing:-0.4px; margin:0;
+    background:linear-gradient(135deg,#3b4f7a,#5b7ab8);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .wb-step-card { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; margin-bottom:8px; }
+  .wb-step-card.dragging { opacity:.4; }
+  .wb-step-card.drag-over { border-color:#3b82f6; }
+  .wb-step-num { width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0; align-self:flex-start; margin-top:2px; }
+  .wb-step-issue { font-size:12px; color:#64748b; margin-top:5px; line-height:1.4; padding:2px 8px; background:#f1f5f9; border-radius:4px; display:inline-block; }
+  .wb-step-warning { font-size:12px; color:#64748b; margin-top:5px; line-height:1.4; padding:2px 8px; background:#f1f5f9; border-radius:4px; display:inline-block; }
+  .wb-tool-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:8px; }
+  .wb-tool-btn { display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; cursor:pointer; text-align:left; font-family:inherit; transition: border-color .12s, background .12s; }
+  .wb-tool-btn:hover { border-color:#3b82f6; background:#f8fafc; }
+  .wb-tool-btn .name { font-size:13px; font-weight:600; color:#1e293b; }
+  .wb-tool-btn .desc { font-size:11px; color:#64748b; line-height:1.4; }
+  .wb-tool-btn .swatch { width:10px; height:10px; border-radius:99px; flex-shrink:0; }
+  .wb-section-label { font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; margin:0 0 10px 0; }
+  .wb-disclosure { font-size:12px; color:#64748b; cursor:pointer; user-select:none; padding:4px 0; }
+  .wb-disclosure:hover { color:#1e293b; }
+  /* — parameter row layout — */
+  .wb-config-row { display:grid; grid-template-columns:155px 1fr; align-items:center; gap:10px; font-size:12px; color:#334155; margin-bottom:6px; }
+  .wb-config-row:last-child { margin-bottom:0; }
+  .wb-config-row--bool { grid-template-columns:auto 1fr; cursor:pointer; }
+  .wb-cfg-label { font-size:12px; font-weight:500; color:#475569; display:inline-flex; align-items:center; gap:5px; line-height:1.3; }
+  .wb-config-row select, .wb-config-row input[type=number], .wb-config-row input[type=text] { border:1px solid #e2e8f0; border-radius:5px; padding:4px 8px; font-size:12px; font-family:inherit; color:#1e293b; background:#fff; height:28px; box-sizing:border-box; }
+  .wb-config-row select { width:auto; justify-self:start; }
+  .wb-config-row input[type=text] { width:100%; }
+  .wb-config-row input[type=number] { width:88px; }
+  .wb-config-row select:focus, .wb-config-row input[type=number]:focus, .wb-config-row input[type=text]:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.1); }
+  /* — params container — */
+  .wb-cfg-params-flat { margin-top:12px; padding-top:12px; border-top:1px solid #eef1f5; }
+  .wb-cfg-params-label { font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.7px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .wb-cfg-params-count { background:#f1f5f9; color:#94a3b8; font-size:10px; font-weight:600; padding:1px 6px; border-radius:99px; }
+  .wb-cfg-section { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 6px 0; padding-bottom:3px; border-bottom:1px solid #f1f5f9; }
+  .wb-cfg-section:first-child { margin-top:0; }
+  .wb-cfg-help { position:relative; display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; background:#e2e8f0; color:#64748b; font-size:9px; font-weight:700; cursor:help; flex-shrink:0; transition:background .12s, color .12s; }
+  .wb-cfg-help:hover, .wb-cfg-help:focus { background:#3b82f6; color:#fff; outline:none; }
+  .wb-cfg-help::after {
+    content: attr(data-help);
+    position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%);
+    background:#ffffff; color:#1e293b; font-size:11.5px; font-weight:400;
+    letter-spacing:0; line-height:1.45; text-align:left;
+    padding:8px 11px; border:1px solid #d6dde6; border-radius:6px;
+    width:max-content; max-width:280px;
+    box-shadow:0 6px 18px rgba(15,23,42,.10), 0 2px 4px rgba(15,23,42,.06);
+    opacity:0; pointer-events:none; visibility:hidden;
+    transition:opacity .12s, visibility .12s;
+    white-space:normal; z-index:100;
+  }
+  .wb-cfg-help::before {
+    content:''; position:absolute; top:calc(100% + 3px); left:50%; transform:translateX(-50%);
+    width:10px; height:10px; background:#ffffff;
+    border-left:1px solid #d6dde6; border-top:1px solid #d6dde6;
+    transform:translateX(-50%) rotate(45deg);
+    opacity:0; pointer-events:none; visibility:hidden;
+    transition:opacity .12s, visibility .12s;
+    z-index:101;
+  }
+  .wb-cfg-help:hover::after, .wb-cfg-help:hover::before,
+  .wb-cfg-help:focus::after, .wb-cfg-help:focus::before {
+    opacity:1; visibility:visible;
+  }
+  /* — accordion sections — */
+  .wb-cfg-subsection { margin:3px 0; border:1px solid #eef1f5; border-radius:7px; background:#fff; }
+  .wb-cfg-subsection + .wb-cfg-subsection { margin-top:4px; }
+  .wb-cfg-subsection > summary { display:flex; align-items:center; gap:7px; padding:7px 10px; list-style:none; cursor:pointer; user-select:none; font-size:12px; font-weight:600; color:#475569; letter-spacing:0; text-transform:none; border-radius:6px; transition:background .1s, color .1s; }
+  .wb-cfg-subsection > summary::-webkit-details-marker { display:none; }
+  .wb-cfg-subsection > summary:hover { background:#f8fafc; color:#1e293b; }
+  .wb-cfg-subsection[open] > summary { background:#f8fafc; color:#1e293b; border-bottom:1px solid #eef1f5; border-radius:6px 6px 0 0; }
+  .wb-cfg-section-chevron { width:13px; height:13px; flex-shrink:0; color:#94a3b8; transition:transform .15s, color .15s; }
+  .wb-cfg-subsection[open] .wb-cfg-section-chevron { transform:rotate(90deg); color:#3b82f6; }
+  .wb-cfg-subsection-count { margin-left:auto; background:#f1f5f9; color:#64748b; font-size:10px; padding:1px 6px; border-radius:99px; font-weight:600; }
+  .wb-cfg-subsection-body { padding:10px 12px 12px; background:#fafbfd; }
+  .wb-cfg-subsection-body .wb-config-row { margin-bottom:6px; }
+  .wb-cfg-subsection-body .wb-config-row:last-child { margin-bottom:0; }
+  .wb-output-caption { font-size:11px; color:#64748b; margin-top:4px; }
+  .wb-hmm-source-notice { display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; color:#64748b; font-size:12px; font-weight:500; padding:2px 8px; border-radius:4px; }
+  .wb-hmm-ctx-note { font-size:11px; color:#64748b; line-height:1.4; }
+  .wb-hmm-auto-block { display:flex; align-items:center; gap:7px; font-size:12px; color:#475569; background:#f8fafc; border:1px solid #eef1f5; border-radius:6px; padding:7px 10px; margin-bottom:8px; }
+</style>
+
+<div class="app-page">
+  <a href="{% url 'workflow_list' %}" class="app-back-link">← Workflows</a>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <h1 class="app-page-title wb-heading">{% if workflow %}Edit workflow{% else %}New workflow{% endif %}</h1>
+      <span id="wb-status-pill" class="wb-pill empty">Empty</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button id="btn-save" class="app-btn-primary" style="display:inline-flex;align-items:center;gap:7px;width:auto;flex-shrink:0;padding:10px 22px;margin-top:0;">
+        <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        Save &amp; continue
+      </button>
+    </div>
+  </div>
+
+  <div id="save-error" class="notice err" style="display:none; margin-top:0; margin-bottom:12px;">
+    <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    <span id="save-error-text"></span>
+  </div>
+
+  <div class="app-card" style="padding:18px; margin-bottom:16px;">
+    <div style="display:flex; gap:14px;">
+      <div class="app-field" style="flex:1; margin:0;">
+        <label style="font-size:12px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.05em;">Workflow name</label>
+        <input type="text" id="wf-name" class="app-input" placeholder="e.g. My HMM Pipeline" style="margin-top:6px;" value="">
+      </div>
+      <div class="app-field" style="flex:2; margin:0;">
+        <label style="font-size:12px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.05em;">Description (optional)</label>
+        <input type="text" id="wf-desc" class="app-input" placeholder="What does this workflow do?" style="margin-top:6px;" value="">
+      </div>
+    </div>
+  </div>
+
+  <div class="app-card" style="padding:14px 18px; margin-bottom:16px;">
+    <p class="wb-section-label">Pipeline preview</p>
+    <div id="flowchart" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:32px;">
+      <span style="color:#cbd5e1; font-size:13px;">Add steps below to see the pipeline</span>
+    </div>
+  </div>
+
+  <div class="app-card" style="padding:18px; margin-bottom:16px;">
+    <p class="wb-section-label">Steps</p>
+    <div id="step-list">
+      <div id="empty-hint" style="padding:18px; text-align:center; color:#94a3b8; border:1px dashed #e2e8f0; border-radius:8px; font-size:13px;">
+        Pick a starting tool below.
+      </div>
+    </div>
+  </div>
+
+  <div id="wb-add-section" class="app-card" style="padding:18px;"></div>
+</div>
+
+<template id="step-card-tpl">
+  <div class="wb-step-card" draggable="true">
+    <div class="drag-handle" style="padding:2px 0; cursor:grab; color:#cbd5e1; flex-shrink:0; margin-top:2px;">
+      <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
+    </div>
+    <span class="wb-step-num" style="background:#94a3b8;"></span>
+    <div style="flex:1; min-width:0;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="step-label" style="font-size:14px; font-weight:600; color:#1e293b;"></span>
+          <span class="step-output-caption" style="font-size:11px; color:#94a3b8;"></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="btn-toggle-config" style="font-size:11px; color:#64748b; background:none; border:none; cursor:pointer; padding:2px 6px;">Configure ▾</button>
+          <button class="btn-remove" style="background:none; border:none; cursor:pointer; color:#cbd5e1; padding:2px;">
+            <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="step-issue" style="display:none;"></div>
+      <div class="step-config" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid #f1f5f9;"></div>
+    </div>
+  </div>
+</template>
+
+<script>
+const TOOL_LABELS      = {{ tool_labels|safe }};
+const TOOL_COLORS      = {{ tool_colors|safe }};
+const TOOL_CONFIG      = {{ tool_config_fields|safe }};
+const TOOL_DESCRIPTORS = {{ tool_descriptors|safe }};
+const TOOL_DEFS        = {{ tool_defaults|safe }};
+const STARTING_TOOLS = {{ starting_tools_json|safe }};
+const MSA_SUPPORTED_FORMATS = {{ msa_supported_formats|safe }};
+const INITIAL      = {{ initial_json|safe }};
+const WF_ID        = {{ workflow.id|default:"null" }};
+const STATE_URL    = '{% url "workflow_builder_state" %}';
+const SAVE_URL     = '{% url "workflow_save" %}';
+const CSRF         = getCookie('csrftoken');
+
+let steps = [];
+let currentState = null;
+let dragSrc = null;
+let stateReqId = 0;
+
+if (INITIAL) {
+  document.getElementById('wf-name').value = INITIAL.name || '';
+  document.getElementById('wf-desc').value = INITIAL.description || '';
+  steps = (INITIAL.steps || []).map(s => ({ tool_type: s.tool_type, config: s.config || {} }));
+}
+renderSteps();
+fetchState();
+
+const FASTA_OUTPUT_TYPES = new Set(['FASTA', 'FASTA_CLEANED', 'EMITTED_FASTA', 'FASTA_DB']);
+
+function addStep(toolType) {
+  const cfg = Object.assign({}, TOOL_DEFS[toolType] || {});
+
+  if (steps.length === 0 && (toolType === 'hmmsearch' || toolType === 'hmmemit')) {
+    cfg.hmm_source = 'external_accession';
+    if (toolType === 'hmmsearch') cfg.db_mode = 'upload';
+  }
+  if (steps.length > 0 && steps[steps.length - 1].tool_type === 'hmmbuild' &&
+      (toolType === 'hmmsearch' || toolType === 'hmmemit')) {
+    cfg.hmm_source = 'previous_step';
+  }
+  if (toolType === 'hmmsearch' && steps.length > 0) {
+    const prevOut = (currentState?.validation?.step_outputs ?? [])[steps.length - 1];
+    if (prevOut && FASTA_OUTPUT_TYPES.has(prevOut)) {
+      cfg.hmm_source = 'external_accession';
+      cfg.db_mode = 'previous_step';
+    }
+  }
+
+  steps.push({ tool_type: toolType, config: cfg });
+  renderSteps();
+  fetchState();
+}
+
+function removeStep(idx) {
+  steps.splice(idx, 1);
+  renderSteps();
+  fetchState();
+}
+
+function moveStep(from, to) {
+  if (from === to) return;
+  const moved = steps.splice(from, 1)[0];
+  steps.splice(to, 0, moved);
+  renderSteps();
+  fetchState();
+}
+
+function renderSteps() {
+  const list = document.getElementById('step-list');
+  const hint = document.getElementById('empty-hint');
+  const openPanels = new Set();
+  const openSubsections = {};  // { idx: Set<section name> }
+  list.querySelectorAll('.wb-step-card').forEach(card => {
+    const idx = parseInt(card.dataset.index);
+    const panel = card.querySelector('.step-config');
+    if (panel && panel.style.display !== 'none') openPanels.add(idx);
+    const subs = new Set();
+    card.querySelectorAll('.wb-cfg-subsection[open]').forEach(s => {
+      if (s.dataset.section) subs.add(s.dataset.section);
+    });
+    if (subs.size) openSubsections[idx] = subs;
+  });
+  list.querySelectorAll('.wb-step-card').forEach(n => n.remove());
+
+  if (steps.length === 0) {
+    hint.style.display = '';
+    renderFlowchart();
+    return;
+  }
+  hint.style.display = 'none';
+
+  const issues = (currentState && currentState.validation && currentState.validation.issues) || [];
+  const stepOutputsHuman = (currentState && currentState.step_outputs_human) || [];
+  const stepOutputTypes = (currentState && currentState.validation && currentState.validation.step_outputs) || [];
+
+  steps.forEach((step, idx) => {
+    const tpl = document.getElementById('step-card-tpl');
+    const card = tpl.content.cloneNode(true).querySelector('.wb-step-card');
+    card.dataset.index = idx;
+
+    card.querySelector('.wb-step-num').style.background = TOOL_COLORS[step.tool_type] || '#94a3b8';
+    card.querySelector('.wb-step-num').textContent = idx + 1;
+    card.querySelector('.step-label').textContent = TOOL_LABELS[step.tool_type] || step.tool_type;
+
+    const outCap = card.querySelector('.step-output-caption');
+    if (stepOutputsHuman[idx]) outCap.textContent = '→ ' + stepOutputsHuman[idx];
+
+    const stepIssues = issues.filter(i => i.step_index === idx);
+    const error = stepIssues.find(i => (i.severity || 'error') === 'error');
+    const warning = stepIssues.find(i => i.severity === 'warning');
+    const issueEl = card.querySelector('.step-issue');
+    if (error) {
+      card.classList.add('invalid');
+      issueEl.classList.add('wb-step-issue');
+      issueEl.textContent = error.message;
+      issueEl.style.display = '';
+    } else if (warning) {
+      issueEl.classList.add('wb-step-warning');
+      issueEl.textContent = warning.message;
+      issueEl.style.display = '';
+    }
+
+    const descriptor = TOOL_DESCRIPTORS[step.tool_type] || { routing: [], parameters: [] };
+    const routingFields = descriptor.routing || [];
+    const paramFields = descriptor.parameters || [];
+    const cfgPanel = card.querySelector('.step-config');
+    const prevOutputType = idx > 0 ? (stepOutputTypes[idx - 1] || null) : null;
+    // Keep step.config.hmm_source in sync with the UI promise: when the
+    // previous step produces an HMM profile, the banner says "use previous"
+    // so the config must agree; if the upstream is removed/moved, drop a
+    // stale "previous_step" choice back to a usable default.
+    // Upgrade legacy 'pfam'/'interpro' values to the unified picker so saved
+    // workflows from before the merge render correctly in the dropdown.
+    if ((step.tool_type === 'hmmsearch' || step.tool_type === 'hmmemit') &&
+        (step.config.hmm_source === 'pfam' || step.config.hmm_source === 'interpro')) {
+      step.config.hmm_source = 'external_accession';
+    }
+    if (step.tool_type === 'hmmsearch') {
+      if (prevOutputType === 'HMM_PROFILE') {
+        step.config.hmm_source = 'previous_step';
+        // The upstream FASTA is the same data the HMM was trained on, so
+        // db_mode='previous_step' would be a circular search. Force upload.
+        step.config.db_mode = 'upload';
+      } else if (step.config.hmm_source === 'previous_step') {
+        step.config.hmm_source = 'external_accession';
+      }
+    }
+    if (routingFields.length === 0 && paramFields.length === 0) {
+      card.querySelector('.btn-toggle-config').style.display = 'none';
+    } else {
+      cfgPanel.innerHTML = buildConfigPanelHTML(descriptor, step.config, idx, prevOutputType);
+      if (step.tool_type === 'hmmsearch') setupWorkflowHmmSourceWidget(idx);
+    }
+
+    card.querySelector('.btn-toggle-config').addEventListener('click', () => {
+      const open = cfgPanel.style.display !== 'none';
+      cfgPanel.style.display = open ? 'none' : 'block';
+      card.querySelector('.btn-toggle-config').textContent = open ? 'Configure ▾' : 'Configure ▴';
+    });
+    if (openPanels.has(idx)) {
+      cfgPanel.style.display = 'block';
+      card.querySelector('.btn-toggle-config').textContent = 'Configure ▴';
+    }
+    const subsOpen = openSubsections[idx];
+    if (subsOpen && subsOpen.size) {
+      cfgPanel.querySelectorAll('.wb-cfg-subsection').forEach(s => {
+        if (subsOpen.has(s.dataset.section)) s.open = true;
+      });
+    }
+    card.querySelector('.btn-remove').addEventListener('click', () => removeStep(idx));
+
+    card.addEventListener('dragstart', e => { dragSrc = idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    card.addEventListener('dragend',   () => card.classList.remove('dragging'));
+    card.addEventListener('dragover',  e => { e.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if (dragSrc !== null) moveStep(dragSrc, idx);
+      dragSrc = null;
+    });
+
+    list.appendChild(card);
+  });
+
+  list.querySelectorAll('[data-cfg-index]').forEach(input => {
+    const key = input.dataset.cfgKey;
+    const idx = parseInt(input.dataset.cfgIndex);
+    const stepDesc = TOOL_DESCRIPTORS[steps[idx]?.tool_type];
+    const isVariantSwitch = stepDesc && stepDesc.variant_field === key;
+
+    const handler = () => {
+      syncConfigFromDom();
+      if (isVariantSwitch) {
+        // Swapping the variant changes which parameter set is shown; drop
+        // stale params from the previous variant so they don't get sent.
+        steps[idx].config.parameters = {};
+        renderSteps();
+      }
+      fetchState();
+    };
+    input.addEventListener('change', handler);
+    if (input.type !== 'checkbox' && input.tagName !== 'SELECT') input.addEventListener('input', () => syncConfigFromDom());
+  });
+
+  syncConfigFromDom();
+
+  wireWorkflowDependencies();
+
+  renderFlowchart();
+}
+
+function resolveParamFields(descriptor, config) {
+  // For tools that expose multiple variants (e.g. MSA family), pick the one
+  // matching the current value of `variant_field`. Falls back to base list.
+  if (descriptor.variant_field && descriptor.parameter_variants) {
+    const key = config[descriptor.variant_field];
+    if (key && descriptor.parameter_variants[key]) {
+      return descriptor.parameter_variants[key];
+    }
+    // Fall back to the first variant if the routing field isn't set yet.
+    const firstKey = Object.keys(descriptor.parameter_variants)[0];
+    return descriptor.parameter_variants[firstKey] || [];
+  }
+  return descriptor.parameters || [];
+}
+
+function buildConfigPanelHTML(descriptor, config, stepIdx, prevOutputType) {
+  const routingFields = descriptor.routing || [];
+  const paramFields = resolveParamFields(descriptor, config);
+  const parts = [];
+
+  if (steps[stepIdx]?.tool_type === 'hmmsearch') {
+    parts.push(buildHmmSourceBlock(config, stepIdx, prevOutputType));
+  }
+
+  if (routingFields.length) {
+    let rf = routingFields;
+    if (steps[stepIdx]?.tool_type === 'clustal_omega') {
+      const msaTool = config.msa_tool || 'clustalo';
+      const supported = MSA_SUPPORTED_FORMATS[msaTool] || ['fasta'];
+      rf = routingFields.map(f => {
+        if (f.name === 'output_format') {
+          const filtered = f.options.filter(([v]) => supported.includes(v));
+          if (config.output_format && !supported.includes(config.output_format)) {
+            steps[stepIdx].config.output_format = supported[0];
+          }
+          return Object.assign({}, f, { options: filtered });
+        }
+        return f;
+      });
+    }
+    parts.push(buildConfigHTML(rf, config, stepIdx, prevOutputType));
+  }
+
+  if (paramFields.length) {
+    // Group parameter fields by section so the panel reads like the dedicated tool forms.
+    const grouped = [];
+    let currentSection = '__init__';
+    let bucket = [];
+    paramFields.forEach(f => {
+      const section = f.section || '';
+      if (section !== currentSection) {
+        if (bucket.length) grouped.push({ section: currentSection, fields: bucket });
+        bucket = [];
+        currentSection = section;
+      }
+      bucket.push(f);
+    });
+    if (bucket.length) grouped.push({ section: currentSection, fields: bucket });
+
+    const sectionsHtml = grouped.map(g => {
+      const fieldsHtml = buildConfigHTML(g.fields, config.parameters || {}, stepIdx, prevOutputType, { paramScope: true });
+      if (!g.section) {
+        return fieldsHtml;
+      }
+      return `
+        <details class="wb-cfg-subsection" data-section="${escapeHtml(g.section)}">
+          <summary>
+            <svg class="wb-cfg-section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            ${escapeHtml(g.section)}
+            <span class="wb-cfg-subsection-count">${g.fields.length}</span>
+          </summary>
+          <div class="wb-cfg-subsection-body">${fieldsHtml}</div>
+        </details>
+      `;
+    }).join('');
+
+    // Sections render directly; the outer "Tool parameters" wrapper was a
+    // wasted second click on top of the already-open Configure panel.
+    parts.push(`
+      <div class="wb-cfg-params-flat" data-step-idx="${stepIdx}">
+        <div class="wb-cfg-params-label">Tool parameters <span class="wb-cfg-params-count">${paramFields.length}</span></div>
+        ${sectionsHtml}
+      </div>
+    `);
+  }
+
+  return parts.join('');
+}
+
+function dependsOnRowAttrs(f, stepIdx) {
+  // Echo the schema's depends_on onto the row so wireWorkflowDependencies()
+  // can hide it client-side. Keeps backend semantics: extract_params_from_
+  // cleaned_data already skips values whose controller is unsatisfied, so
+  // hidden rows are also dropped from the saved parameters dict on build.
+  if (!f.depends_on || !f.depends_on.field) return '';
+  let values;
+  if ('value' in f.depends_on) {
+    values = [f.depends_on.value];
+  } else if (Array.isArray(f.depends_on.values)) {
+    values = f.depends_on.values;
+  } else {
+    values = [];
+  }
+  const controller = `${stepIdx}.${f.depends_on.field}`;
+  const escaped = JSON.stringify(values).replace(/'/g, '&#39;');
+  return ` data-wb-depends-controller="${controller}" data-wb-depends-values='${escaped}'`;
+}
+
+function buildConfigHTML(fields, config, stepIdx, prevOutputType, opts) {
+  const paramScope = !!(opts && opts.paramScope);
+  return fields.map(f => {
+    const val = config[f.name] !== undefined ? config[f.name] : (f.default !== undefined ? f.default : '');
+    const scopeAttr = paramScope ? ' data-cfg-scope="parameters"' : '';
+    const fieldId = `cfg-${stepIdx}-${f.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const depsAttr = dependsOnRowAttrs(f, stepIdx);
+
+    if (!paramScope && steps[stepIdx]?.tool_type === 'hmmemit' && f.name === 'hmm_source') {
+      if (prevOutputType === 'HMM_PROFILE') {
+        return `<div class="wb-config-row">
+          <span class="wb-cfg-label">${escapeHtml(f.label)}</span>
+          <span class="wb-hmm-source-notice">
+            <svg style="width:11px;height:11px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            From previous step (HMMBUILD output)
+          </span>
+          <input type="hidden" data-cfg-index="${stepIdx}" data-cfg-key="${f.name}" value="previous_step">
+        </div>`;
+      }
+      // Legacy 'pfam'/'interpro' fold into the unified picker so the dropdown
+      // shows a matching option for older saved workflows.
+      let currentVal = val;
+      if (currentVal === 'previous_step' || currentVal === 'pfam' || currentVal === 'interpro') {
+        currentVal = 'external_accession';
+      }
+      const opts2 = f.options
+        .filter(([v]) => v !== 'previous_step')
+        .map(([v, l]) => `<option value="${v}" ${currentVal === v ? 'selected' : ''}>${escapeHtml(l)}</option>`)
+        .join('');
+      return `<div class="wb-config-row">
+        <label class="wb-cfg-label" for="${fieldId}">${escapeHtml(f.label)}</label>
+        <select id="${fieldId}" data-cfg-index="${stepIdx}" data-cfg-key="${f.name}">${opts2}</select>
+      </div>`;
+    }
+
+    // HMMSEARCH FASTA database: when HMMBUILD precedes, the upstream FASTA is
+    // the same data the HMM was trained on. Searching the HMM against it is
+    // circular ("find the sequences you fit the model to"). Force upload-only;
+    // the run-start form already prompts the user to upload a FASTA, so the
+    // builder row is hidden to avoid a redundant "Upload a separate FASTA"
+    // notice with no actionable control.
+    if (!paramScope && steps[stepIdx]?.tool_type === 'hmmsearch' && f.name === 'db_mode') {
+      if (prevOutputType === 'HMM_PROFILE') {
+        return `<input type="hidden" data-cfg-index="${stepIdx}" data-cfg-key="${f.name}" value="upload">`;
+      }
+    }
+
+    const help = f.help_text
+      ? `<span class="wb-cfg-help" tabindex="0" data-help="${escapeHtml(f.help_text)}" aria-label="${escapeHtml(f.help_text)}">?</span>`
+      : '';
+
+    if (f.type === 'bool') {
+      return `<label class="wb-config-row wb-config-row--bool"${depsAttr}>
+        <input type="checkbox" data-cfg-index="${stepIdx}" data-cfg-key="${f.name}"${scopeAttr} ${val ? 'checked' : ''}>
+        <span class="wb-cfg-label">${escapeHtml(f.label)} ${help}</span>
+      </label>`;
+    }
+    if (f.type === 'select') {
+      const opts2 = (f.options || []).map(([v, l]) =>
+        `<option value="${escapeHtml(String(v))}" ${String(val) === String(v) ? 'selected' : ''}>${escapeHtml(String(l))}</option>`).join('');
+      return `<div class="wb-config-row"${depsAttr}>
+        <label class="wb-cfg-label" for="${fieldId}">${escapeHtml(f.label)} ${help}</label>
+        <select id="${fieldId}" data-cfg-index="${stepIdx}" data-cfg-key="${f.name}"${scopeAttr}>${opts2}</select>
+      </div>`;
+    }
+    if (f.type === 'int' || f.type === 'number') {
+      const kind = f.number_kind || (f.type === 'int' ? 'int' : 'float');
+      const stepAttr = (kind === 'float') ? ' step="any"' : '';
+      const minAttr = (f.min !== undefined && f.min !== null) ? ` min="${f.min}"` : ' min="1"';
+      const maxAttr = (f.max !== undefined && f.max !== null) ? ` max="${f.max}"` : '';
+      const dataKind = ` data-cfg-kind="${kind}"`;
+      return `<div class="wb-config-row"${depsAttr}>
+        <label class="wb-cfg-label" for="${fieldId}">${escapeHtml(f.label)} ${help}</label>
+        <input id="${fieldId}" type="number" data-cfg-index="${stepIdx}" data-cfg-key="${f.name}"${scopeAttr}${dataKind} value="${val === null || val === undefined ? '' : val}"${minAttr}${maxAttr}${stepAttr}>
+      </div>`;
+    }
+    if (f.type === 'text') {
+      return `<div class="wb-config-row"${depsAttr}>
+        <label class="wb-cfg-label" for="${fieldId}">${escapeHtml(f.label)} ${help}</label>
+        <input id="${fieldId}" type="text" data-cfg-index="${stepIdx}" data-cfg-key="${f.name}"${scopeAttr} value="${escapeHtml(String(val || ''))}">
+      </div>`;
+    }
+    return '';
+  }).join('');
+}
+
+function wireWorkflowDependencies() {
+  // Hide parameter rows whose schema depends_on is not satisfied. Backend
+  // already filters hidden params out of the saved parameters dict via
+  // extract_params_from_cleaned_data, so this is purely a UX layer.
+  const rows = document.querySelectorAll('[data-wb-depends-controller]');
+  if (!rows.length) return;
+
+  const groups = new Map();  // controller-key -> [{row, allowed}]
+  rows.forEach(row => {
+    const ref = row.dataset.wbDependsController || '';
+    const dot = ref.indexOf('.');
+    if (dot < 0) return;
+    const stepIdx = ref.slice(0, dot);
+    const controllerName = ref.slice(dot + 1);
+    let allowed;
+    try { allowed = JSON.parse(row.dataset.wbDependsValues || '[]'); }
+    catch (e) { allowed = []; }
+    const key = `${stepIdx}::${controllerName}`;
+    if (!groups.has(key)) groups.set(key, { stepIdx, controllerName, items: [] });
+    groups.get(key).items.push({ row, allowed: allowed.map(String) });
+  });
+
+  const readControllerValue = (stepIdx, name) => {
+    const inputs = document.querySelectorAll(
+      `[data-cfg-index="${stepIdx}"][data-cfg-key="${CSS.escape(name)}"]`
+    );
+    let val = '';
+    inputs.forEach(c => {
+      if (c.type === 'checkbox') val = c.checked ? 'true' : 'false';
+      else if (c.type === 'radio') { if (c.checked) val = c.value; }
+      else val = c.value;
+    });
+    return String(val);
+  };
+
+  const applyAll = () => {
+    // Chained dependencies (A controls B, B controls C) settle after a few
+    // passes — keep looping until visibility stops changing.
+    for (let pass = 0; pass < 5; pass++) {
+      let changed = false;
+      groups.forEach(({ stepIdx, controllerName, items }) => {
+        const current = readControllerValue(stepIdx, controllerName);
+        items.forEach(({ row, allowed }) => {
+          const ok = allowed.includes(current);
+          const hidden = row.style.display === 'none';
+          if (ok && hidden) { row.style.display = ''; changed = true; }
+          else if (!ok && !hidden) { row.style.display = 'none'; changed = true; }
+        });
+      });
+      if (!changed) break;
+    }
+  };
+
+  groups.forEach(({ stepIdx, controllerName }) => {
+    document.querySelectorAll(
+      `[data-cfg-index="${stepIdx}"][data-cfg-key="${CSS.escape(controllerName)}"]`
+    ).forEach(c => {
+      c.addEventListener('change', applyAll);
+      c.addEventListener('input', applyAll);
+    });
+  });
+  applyAll();
+}
+
+function buildHmmSourceBlock(config, stepIdx, prevOutputType) {
+  if (prevOutputType === 'HMM_PROFILE') {
+    return `<div class="wb-hmm-auto-block">
+      <svg style="width:13px;height:13px;flex-shrink:0;color:#22c55e;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      HMM profile from the previous HMMBUILD step will be used automatically.
+    </div>`;
+  }
+  return `<div class="wb-hmm-ctx-note" style="padding:7px 10px;background:#f8fafc;border:1px solid #eef1f5;border-radius:6px;margin-bottom:8px;">
+    HMM profile input will be requested when running the workflow.
+  </div>`;
+}
+
+function setupWorkflowHmmSourceWidget(_stepIdx) {
+  // No-op: HMM source is now collected at run time in the run-start form.
+}
+
+function syncConfigFromDom() {
+  document.querySelectorAll('[data-cfg-index]').forEach(input => {
+    const idx = parseInt(input.dataset.cfgIndex);
+    const key = input.dataset.cfgKey;
+    if (!steps[idx]) return;
+
+    const scope = input.dataset.cfgScope;
+    // Schema-driven params live under config.parameters; routing fields are top-level.
+    let target;
+    if (scope === 'parameters') {
+      if (!steps[idx].config.parameters || typeof steps[idx].config.parameters !== 'object') {
+        steps[idx].config.parameters = {};
+      }
+      target = steps[idx].config.parameters;
+    } else {
+      target = steps[idx].config;
+    }
+
+    if (input.type === 'checkbox') {
+      target[key] = input.checked;
+    } else if (input.type === 'number') {
+      if (input.value === '') {
+        // Empty input clears the override so the schema default applies.
+        if (scope === 'parameters') {
+          delete target[key];
+        } else {
+          target[key] = null;
+        }
+      } else {
+        const kind = input.dataset.cfgKind || 'int';
+        target[key] = (kind === 'float') ? parseFloat(input.value) : parseInt(input.value, 10);
+      }
+    } else {
+      target[key] = input.value;
+    }
+  });
+}
+
+function renderFlowchart() {
+  const fc = document.getElementById('flowchart');
+  if (steps.length === 0) {
+    fc.innerHTML = '<span style="color:#cbd5e1;font-size:13px;">Add steps below to see the pipeline</span>';
+    return;
+  }
+  fc.innerHTML = steps.map((s, i) => {
+    const color = TOOL_COLORS[s.tool_type] || '#94a3b8';
+    const label = TOOL_LABELS[s.tool_type] || s.tool_type;
+    const pill = `<span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:99px;background:${color}1a;color:${color};font-size:12px;font-weight:600;white-space:nowrap;">${label}</span>`;
+    const arrow = i < steps.length - 1
+      ? `<svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`
+      : '';
+    return pill + arrow;
+  }).join('');
+}
+
+function _captureUiPosition() {
+  const active = document.activeElement;
+  const snapshot = { scrollY: window.scrollY };
+  if (active && active.matches('[data-cfg-index][data-cfg-key]')) {
+    snapshot.focus = {
+      index: active.dataset.cfgIndex,
+      key:   active.dataset.cfgKey,
+      type:  active.type,
+      start: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+      end:   typeof active.selectionEnd   === 'number' ? active.selectionEnd   : null,
+    };
+  }
+  return snapshot;
+}
+
+function _restoreUiPosition(snap) {
+  if (!snap) return;
+  window.scrollTo({ top: snap.scrollY, behavior: 'instant' });
+  if (snap.focus) {
+    const sel = `[data-cfg-index="${snap.focus.index}"][data-cfg-key="${CSS.escape(snap.focus.key)}"]`;
+    const el = document.querySelector(sel);
+    if (el) {
+      el.focus({ preventScroll: true });
+      if (snap.focus.start !== null && typeof el.setSelectionRange === 'function') {
+        try { el.setSelectionRange(snap.focus.start, snap.focus.end); } catch (_) {}
+      }
+    }
+  }
+}
+
+async function fetchState() {
+  const myId = ++stateReqId;
+  if (steps.length === 0) {
+    currentState = { state: 'empty', starting_tools: STARTING_TOOLS };
+    setStatusPill('empty');
+    renderAddSection();
+    return;
+  }
+  try {
+    const resp = await fetch(STATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ steps: steps.map(s => ({ tool_type: s.tool_type, config: s.config })) }),
+    });
+    if (myId !== stateReqId) return;
+    const payload = await resp.json();
+    currentState = payload;
+    setStatusPill(payload.state);
+    const snap = _captureUiPosition();
+    renderSteps();
+    renderAddSection();
+    _restoreUiPosition(snap);
+  } catch (_) {
+    }
+}
+
+function setStatusPill(state) {
+  const pill = document.getElementById('wb-status-pill');
+  pill.classList.remove('empty', 'valid', 'invalid');
+  if (state === 'valid')   { pill.classList.add('valid');   pill.textContent = 'Valid'; }
+  else if (state === 'invalid') { pill.classList.add('invalid'); pill.textContent = 'Needs attention'; }
+  else                          { pill.classList.add('empty');   pill.textContent = 'Empty'; }
+}
+
+function renderAddSection() {
+  const root = document.getElementById('wb-add-section');
+  const s = currentState || { state: 'empty', starting_tools: STARTING_TOOLS };
+  root.style.display = '';
+
+  if (s.state === 'empty') {
+    root.innerHTML = `
+      <p class="wb-section-label">Start with</p>
+      <div class="wb-tool-grid" id="start-grid"></div>`;
+    fillToolGrid('start-grid', s.starting_tools, addStep);
+    return;
+  }
+
+  if (s.state === 'valid') {
+    const lastType = s.validation && s.validation.last_output_type;
+    const noRecHtml = (lastType === 'EMITTED_FASTA')
+      ? `<p class="wb-section-label">Pipeline complete</p>
+         <p style="font-size:13px; color:#64748b; margin:0 0 8px 0;">
+           This workflow is ready to run.
+           To process the emitted sequences further, see "Other available" below.
+         </p>`
+      : `<p class="wb-section-label">No further steps required</p>
+         <p style="font-size:13px; color:#64748b; margin:0 0 8px 0;">This pipeline is ready to run.</p>`;
+    const recHtml = (s.recommended || []).length
+      ? `<p class="wb-section-label">Recommended next</p><div class="wb-tool-grid" id="rec-grid"></div>`
+      : noRecHtml;
+    const otherHtml = (s.other || []).length
+      ? `<details style="margin-top:14px;"><summary class="wb-disclosure">Other available (${s.other.length})</summary>
+           <div class="wb-tool-grid" id="other-grid" style="margin-top:10px;"></div></details>`
+      : '';
+    const unavailHtml = (s.unavailable || []).length
+      ? `<details style="margin-top:14px;"><summary class="wb-disclosure">Unavailable (${s.unavailable.length})</summary>
+           <div id="unavail-list" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div></details>`
+      : '';
+    root.innerHTML = recHtml + otherHtml + unavailHtml;
+    if ((s.recommended || []).length) fillToolGrid('rec-grid', s.recommended, addStep);
+    if ((s.other || []).length)        fillToolGrid('other-grid', s.other, addStep);
+    if ((s.unavailable || []).length)  fillUnavailable('unavail-list', s.unavailable);
+    return;
+  }
+
+  root.innerHTML = '';
+  root.style.display = 'none';
+}
+
+function fillToolGrid(elId, tools, onClick) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '';
+  tools.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'wb-tool-btn';
+    btn.innerHTML = `
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="swatch" style="background:${t.color}"></span>
+        <span class="name">${escapeHtml(t.label)}</span>
+      </div>
+      <span class="desc">${escapeHtml(t.description || '')}</span>`;
+    btn.addEventListener('click', () => onClick(t.tool_type));
+    el.appendChild(btn);
+  });
+}
+
+function fillUnavailable(elId, tools) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '';
+  tools.forEach(t => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; align-items:flex-start; gap:8px; font-size:12px; color:#94a3b8;';
+    row.innerHTML = `
+      <span style="font-weight:600; color:#64748b;">${escapeHtml(t.label)}</span>
+      <span style="font-style:italic;">- ${escapeHtml(t.reason || '')}</span>`;
+    el.appendChild(row);
+  });
+}
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  syncConfigFromDom();
+  const errEl = document.getElementById('save-error');
+  errEl.style.display = 'none';
+
+  const name = document.getElementById('wf-name').value.trim();
+  if (!name) return showError('Please enter a workflow name.');
+  if (steps.length === 0) return showError('Add at least one step.');
+
+  const payload = {
+    id: WF_ID, name,
+    description: document.getElementById('wf-desc').value.trim(),
+    steps: steps.map((s, i) => ({ order: i, tool_type: s.tool_type, config: s.config })),
+  };
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Saving…';
+  try {
+    const resp = await fetch(SAVE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (data.error) {
+      if (data.state) { currentState = data.state; setStatusPill(data.state.state); renderSteps(); renderAddSection(); }
+      return showError(data.error);
+    }
+    window.location.href = data.redirect_url;
+  } catch (_) {
+    showError('Save failed. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+});
+
+function showError(msg) {
+  document.getElementById('save-error-text').textContent = msg;
+  document.getElementById('save-error').style.display = 'flex';
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[c]);
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+</script>
+{% endblock %}

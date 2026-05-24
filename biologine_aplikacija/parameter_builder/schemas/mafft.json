@@ -1,0 +1,355 @@
+{
+  "tool_id": "mafft",
+  "display_name": "MAFFT",
+  "executable": "mafft",
+  "fixed_args": [],
+  "supported_output_formats": ["fasta", "clustal"],
+  "parameters": [
+    {
+      "name": "thread",
+      "label": "Threads (--thread)",
+      "section": "Basic",
+      "flag": "--thread",
+      "type": "number",
+      "default": 1,
+      "min": -1,
+      "max": 16,
+      "help_text": "Number of CPU cores. Set to -1 to use all available cores."
+    },
+    {
+      "name": "auto",
+      "label": "Auto strategy (--auto)",
+      "section": "Basic",
+      "flag": "--auto",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Pick an appropriate algorithm strategy based on dataset size. Overrides the strategy choice below."
+    },
+    {
+      "name": "strategy",
+      "label": "Pairwise alignment strategy",
+      "section": "Basic",
+      "type": "radio_group",
+      "default": "default",
+      "options": [
+        {"value": "default",    "label": "Default (progressive)",                                            "flag": null},
+        {"value": "localpair",  "label": "--localpair · L-INS-i (local alignment, high accuracy, slower)",  "flag": "--localpair"},
+        {"value": "globalpair", "label": "--globalpair · G-INS-i (global alignment)",                        "flag": "--globalpair"},
+        {"value": "genafpair",  "label": "--genafpair · E-INS-i (generalised affine gap, mixed-domain)",     "flag": "--genafpair"},
+        {"value": "fastapair",  "label": "--fastapair · F-INS-i (FASTA-based local alignment)",              "flag": "--fastapair"}
+      ],
+      "help_text": "Mutually exclusive accuracy strategies. Ignored if Auto is on."
+    },
+    {
+      "name": "maxiterate",
+      "label": "Iterative refinement (--maxiterate)",
+      "section": "Basic",
+      "flag": "--maxiterate",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "help_text": "Number of refinement iterations (0 = none). Recommended 1000 with --localpair/--globalpair for small inputs."
+    },
+    {
+      "name": "adjustdirection",
+      "label": "Adjust strand direction (--adjustdirection)",
+      "section": "Basic",
+      "flag": "--adjustdirection",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Automatically detect and reverse-complement nucleotide sequences that are in the wrong direction. Fast heuristic check."
+    },
+    {
+      "name": "retree",
+      "label": "Guide tree rebuilds (--retree)",
+      "section": "Advanced",
+      "flag": "--retree",
+      "type": "number",
+      "default": 2,
+      "min": 1,
+      "max": 5,
+      "help_text": "How many times to rebuild the guide tree. 1 = fastest."
+    },
+    {
+      "name": "seqtype",
+      "label": "Sequence type",
+      "section": "Advanced",
+      "type": "radio_group",
+      "default": "default",
+      "options": [
+        {"value": "default", "label": "Auto-detect",          "flag": null},
+        {"value": "amino",   "label": "--amino · Force protein", "flag": "--amino"},
+        {"value": "nuc",     "label": "--nuc · Force nucleotide", "flag": "--nuc"}
+      ],
+      "help_text": "Force input alphabet when auto-detection fails."
+    },
+    {
+      "name": "bl",
+      "label": "BLOSUM matrix (--bl)",
+      "section": "Advanced",
+      "flag": "--bl",
+      "type": "select",
+      "default": null,
+      "options": ["30", "45", "62", "80"],
+      "help_text": "Substitution matrix for protein alignment. BLOSUM62 is the MAFFT default; use 30/45 for divergent sequences, 80 for closely related. Overridden by JTT or TM if set."
+    },
+    {
+      "name": "jtt",
+      "label": "JTT PAM matrix (--jtt)",
+      "section": "Advanced",
+      "flag": "--jtt",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 1000,
+      "help_text": "Use JTT PAM matrix instead of BLOSUM. Enter the PAM number (e.g. 200). Leave empty to use BLOSUM."
+    },
+    {
+      "name": "tm",
+      "label": "Transmembrane PAM matrix (--tm)",
+      "section": "Advanced",
+      "flag": "--tm",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 1000,
+      "help_text": "Use transmembrane PAM matrix instead of BLOSUM. Enter the PAM number (e.g. 200). Leave empty to use BLOSUM. Designed for transmembrane proteins."
+    },
+    {
+      "name": "op",
+      "label": "Gap opening penalty (--op)",
+      "section": "Advanced",
+      "flag": "--op",
+      "type": "float",
+      "default": 1.53,
+      "min": 0.0,
+      "max": 10.0,
+      "help_text": "Penalty for opening a gap. Default 1.53."
+    },
+    {
+      "name": "ep",
+      "label": "Gap offset (--ep)",
+      "section": "Advanced",
+      "flag": "--ep",
+      "type": "float",
+      "default": 0.0,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Offset that behaves like a gap extension penalty. Default 0.0."
+    },
+    {
+      "name": "adjustdirectionaccurately",
+      "label": "Adjust strand direction accurately (--adjustdirectionaccurately)",
+      "section": "Advanced",
+      "flag": "--adjustdirectionaccurately",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Like --adjustdirection but uses a more accurate (and slower) algorithm. Recommended when direction detection matters."
+    },
+    {
+      "name": "fmodel",
+      "label": "Use scoring model (--fmodel)",
+      "section": "Advanced",
+      "flag": "--fmodel",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Incorporate the AA/nuc composition of each sequence into the scoring model."
+    },
+    {
+      "name": "lop",
+      "label": "Local gap open penalty (--lop)",
+      "section": "Expert",
+      "flag": "--lop",
+      "type": "float",
+      "default": -2.0,
+      "min": -10.0,
+      "max": 0.0,
+      "help_text": "Gap open penalty for the local pairwise alignment stage."
+    },
+    {
+      "name": "lep",
+      "label": "Local gap extension penalty (--lep)",
+      "section": "Expert",
+      "flag": "--lep",
+      "type": "float",
+      "default": 0.1,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Gap extension penalty for the local pairwise alignment stage."
+    },
+    {
+      "name": "lexp",
+      "label": "Local gap offset (--lexp)",
+      "section": "Expert",
+      "flag": "--lexp",
+      "type": "float",
+      "default": -0.1,
+      "min": -1.0,
+      "max": 0.0,
+      "help_text": "Offset for the local pairwise alignment stage."
+    },
+    {
+      "name": "weighti",
+      "label": "Consistency weight (--weighti)",
+      "section": "Expert",
+      "flag": "--weighti",
+      "type": "float",
+      "default": 2.7,
+      "min": 0.0,
+      "max": 10.0,
+      "help_text": "Weighting factor for the consistency term calculated from pairwise alignments. Default 2.7."
+    },
+    {
+      "name": "LOP",
+      "label": "Skip-alignment gap open (--LOP)",
+      "section": "Expert",
+      "flag": "--LOP",
+      "type": "float",
+      "default": -6.0,
+      "min": -20.0,
+      "max": 0.0,
+      "help_text": "Gap opening penalty to skip the alignment in L-INS-i / E-INS-i. Default -6.00."
+    },
+    {
+      "name": "LEXP",
+      "label": "Skip-alignment gap extension (--LEXP)",
+      "section": "Expert",
+      "flag": "--LEXP",
+      "type": "float",
+      "default": 0.0,
+      "min": -1.0,
+      "max": 1.0,
+      "help_text": "Gap extension penalty to skip the alignment in L-INS-i / E-INS-i. Default 0.00."
+    },
+    {
+      "name": "nofft",
+      "label": "Disable FFT (--nofft)",
+      "section": "Expert",
+      "flag": "--nofft",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Turn off the FFT-based homology search. Slower but sometimes more stable on short sequences."
+    },
+    {
+      "name": "parttree",
+      "label": "PartTree guide tree (--parttree)",
+      "section": "Expert",
+      "flag": "--parttree",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use the PartTree algorithm for the guide tree with 6mer distance. Suitable for very large datasets (>50 000 sequences). Mutually exclusive with --dpparttree."
+    },
+    {
+      "name": "dpparttree",
+      "label": "DP PartTree guide tree (--dpparttree)",
+      "section": "Expert",
+      "flag": "--dpparttree",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use PartTree algorithm with distance-programming-based distances. More accurate than --parttree but slower. Mutually exclusive with --parttree."
+    },
+    {
+      "name": "partsize",
+      "label": "PartTree partition size (--partsize)",
+      "section": "Expert",
+      "flag": "--partsize",
+      "type": "number",
+      "default": 50,
+      "min": 1,
+      "max": 10000,
+      "help_text": "Number of partitions in the PartTree algorithm. Only used when --parttree or --dpparttree is enabled. Default 50."
+    },
+    {
+      "name": "groupsize",
+      "label": "Max group size (--groupsize)",
+      "section": "Expert",
+      "flag": "--groupsize",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 100000,
+      "help_text": "Do not make alignment larger than this number of sequences. Useful with --parttree for extremely large inputs. Leave empty for no limit."
+    },
+    {
+      "name": "noscore",
+      "label": "Skip alignment score (--noscore)",
+      "section": "Expert",
+      "flag": "--noscore",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Skip the alignment score check. Can speed up the run on large inputs."
+    },
+    {
+      "name": "memsave",
+      "label": "Memory-saving mode (--memsave)",
+      "section": "Expert",
+      "flag": "--memsave",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use less memory at the expense of speed. Useful for very large datasets."
+    },
+    {
+      "name": "pileup",
+      "label": "Pileup alignment (--pileup)",
+      "section": "Expert",
+      "flag": "--pileup",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Align sequences sequentially in input order instead of using a guide tree. Simple and fast but less accurate."
+    },
+    {
+      "name": "large",
+      "label": "Large dataset mode (--large)",
+      "section": "Expert",
+      "flag": "--large",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use files instead of RAM for temporary data. Slower but avoids memory exhaustion on very large datasets."
+    },
+    {
+      "name": "memsavetree",
+      "label": "Memory-saving guide tree (--memsavetree)",
+      "section": "Expert",
+      "flag": "--memsavetree",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use less memory to build the guide tree. Useful for datasets with many sequences."
+    },
+    {
+      "name": "anysymbol",
+      "label": "Accept non-standard symbols (--anysymbol)",
+      "section": "Expert",
+      "flag": "--anysymbol",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Allow non-standard characters in input sequences (e.g. U in protein). Without this flag, MAFFT may reject unusual symbols."
+    },
+    {
+      "name": "reorder",
+      "label": "Reorder output (--reorder)",
+      "section": "Output",
+      "flag": "--reorder",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Reorder output by alignment order rather than input order."
+    },
+    {
+      "name": "treeout",
+      "label": "Save guide tree (--treeout)",
+      "section": "Output",
+      "flag": "--treeout",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Write the guide tree alongside the alignment. The tree file is not displayed in the UI but is produced on disk."
+    },
+    {
+      "name": "clustalout",
+      "label": "Clustal output (--clustalout)",
+      "flag": "--clustalout",
+      "type": "boolean",
+      "default": false,
+      "ui_hidden": true
+    }
+  ]
+}

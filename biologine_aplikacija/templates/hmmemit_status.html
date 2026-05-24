@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ project.name }} – HMMEMIT{% endblock %}
+
+{% block content %}
+{% include "_app_design.html" %}
+
+<div class="app-page">
+
+  <a href="{% url 'hmmemit_form' %}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    New run
+  </a>
+
+  <div class="page-title">HMMEMIT</div>
+
+  {% if project.task_status == 'FAILURE' %}
+    {% url 'hmmemit_form' as hmmemit_form_url %}
+    {% include "_tool_actions.html" with tool_type="hmmemit" project_id=project.id show_my_projects=True back_tool_param="hmmemit" retry_url=hmmemit_form_url retry_label="Try with other input" hide_delete=True %}
+  {% elif project.task_status != 'SUCCESS' %}
+    {% include "_tool_actions.html" with tool_type="hmmemit" project_id=project.id show_my_projects=True back_tool_param="hmmemit" %}
+  {% endif %}
+
+  {% if project.task_status != 'SUCCESS' %}
+  <div class="form-card">
+    <div class="status-line">
+      <span class="project-label">{{ project.name|default:"Untitled" }}</span>
+      <span class="status-pill {{ project.task_status|lower }}" id="task-status">{{ project.task_status }}</span>
+    </div>
+    <div class="progress-wrap" id="progress-wrap" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+    </div>
+    <p class="progress-msg" id="task-message" {% if project.task_status == 'FAILURE' %}style="display:none"{% endif %}>Running...</p>
+
+    <div id="error-container" {% if project.task_status != 'FAILURE' %}style="display:none"{% endif %}>
+      <div class="notice err">
+        <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span id="error-message">{% if project.task_status == 'FAILURE' %}{% if project.result_text and project.result_text|slice:":6" == 'ERROR:' %}{{ project.result_text|slice:"6:" }}{% else %}Sequence generation failed. Please try again.{% endif %}{% endif %}</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if project.task_status == 'SUCCESS' %}
+  <div class="results-card" id="he-results">
+    <div class="results-header">
+      <div class="results-title-wrap">
+        <span class="results-title">Run Report</span>
+        {% if project.name %}<span class="results-filename">{{ project.name }}</span>{% endif %}
+      </div>
+      <div class="results-actions-cluster">
+        <span class="results-status ok">✓ COMPLETE</span>
+        <button type="button" class="rr-icon-btn" onclick="rrToggleCard(this)" title="Collapse/expand">
+          <svg class="rr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="results-body">
+      <div class="report-summary">
+        <div class="comment"># HMMEMIT - output summary</div>
+        {% if project.hmm_source == 'pfam' %}
+        <div class="row"><span class="lbl">HMM source</span><span class="val">Pfam</span><span class="note">{{ project.external_hmm_id }}</span></div>
+        {% elif project.hmm_source == 'interpro' %}
+        <div class="row"><span class="lbl">HMM source</span><span class="val">InterPro</span><span class="note">{{ project.external_hmm_id }}</span></div>
+        {% else %}
+        <div class="row"><span class="lbl">HMM source</span><span class="val">Uploaded</span></div>
+        {% endif %}
+        <div class="row"><span class="lbl">Sequences emitted</span><span class="val">{{ emit_seq_count|default:"-" }}</span></div>
+        <div class="row"><span class="lbl">Created</span><span class="val">{{ project.created_at|date:"Y-m-d H:i" }}</span></div>
+      </div>
+
+      {% include "_parameter_overrides.html" %}
+
+      <div class="result-actions">
+        {% if can_download_input and project.hmm_source == 'upload' and project.hmm_file %}
+        <a class="btn-secondary" href="{% url 'hmmemit_input_download' project_id=project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download HMM input
+        </a>
+        {% endif %}
+        <a href="{% url 'my-projects' %}?tool=hmmemit" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to My Projects
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if output_preview %}
+    {% if can_download_output and output_filename %}
+      {% url 'hmmemit_output_download' project_id=project.id as emit_dl %}
+      {% include "_result_card.html" with card_id="emit-out" result_title="Output preview" result_subtitle="Emitted sequences (.fa)" result_pre=output_preview download_url=emit_dl download_label="Download .fa" start_open=True truncated_note=output_preview_note %}
+    {% else %}
+      {% include "_result_card.html" with card_id="emit-out" result_title="Output preview" result_subtitle="Emitted sequences (.fa)" result_pre=output_preview start_open=True truncated_note=output_preview_note %}
+    {% endif %}
+  {% endif %}
+  {% endif %}
+
+</div>
+
+<script src="{% static 'js/task_status_poll.js' %}"></script>
+<script>
+  initTaskStatusPoll({
+    taskId: "{{ project.task_id }}",
+    statusUrl: "{% url 'hmmemit_task_status' task_id='TASK_ID' %}".replace('TASK_ID', "{{ project.task_id }}"),
+    initialStatus: "{{ project.task_status }}",
+    resultsAnchorId: 'he-results',
+    messageId: 'task-message',
+    badgeId: 'task-status',
+  });
+</script>
+{% endblock %}

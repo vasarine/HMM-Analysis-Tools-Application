@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="homepage">
+    <div class="hero-section-simple">
+        <h1 class="hero-title">HMM Analysis Tools</h1>
+        <p class="hero-subtitle">A web application for biological sequence analysis using hidden Markov models (HMMs).</p>
+    </div>
+
+    <div class="tools-section">
+        <h2 class="section-title" style="font-size: 1.75rem; text-align: center;">Available Tools</h2>
+        <div class="tools-grid">
+            <div class="tool-card">
+                <div class="tool-icon">
+                    <svg width="80" height="80" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="DNA Icon">
+                        <path d="M20 14 L20 50 L44 50 L44 24 L34 14 Z" fill="white" stroke="#5B8DC4" stroke-width="2.5"/>
+                        <path d="M34 14 L34 24 L44 24" fill="#E3F2FD" stroke="#5B8DC4" stroke-width="2.5" stroke-linejoin="round"/>
+                        <line x1="24" y1="30" x2="40" y2="30" stroke="#5B8DC4" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="24" y1="35" x2="40" y2="35" stroke="#5B8DC4" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="24" y1="40" x2="36" y2="40" stroke="#5B8DC4" stroke-width="1.5" opacity="0.5"/>
+                    </svg>
+                </div>
+                <h3>HMMBUILD</h3>
+                <p>Build a HMM profile from a multiple sequence alignment file (MSA).
+                    Useful for modeling conserved sequence patterns and insertion/deletion events.</p>
+                <a href="{% url 'hmmbuild_form' %}" class="tool-link">Use Tool</a>
+            </div>
+            <div class="tool-card">
+                <div class="tool-icon">
+                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Microscope Icon">
+                        <defs>
+                            <linearGradient id="dnaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#6B9FD8;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#4A7DB5;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M27 10 c 0 13, 27 13, 27 27 s -27 13, -27 33" stroke="url(#dnaGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+                        <path d="M53 10 c 0 13, -27 13, -27 27 s 27 13, 27 33" stroke="url(#dnaGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+                        <line x1="30" y1="13" x2="50" y2="13" stroke="#6B9FD8" stroke-width="3" stroke-linecap="round"/>
+                        <line x1="26" y1="37" x2="54" y2="37" stroke="#5B8FC7" stroke-width="3" stroke-linecap="round"/>
+                        <line x1="30" y1="63" x2="50" y2="63" stroke="#4A7DB5" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <h3>HMMEMIT</h3>
+                <p>Generate random sequences from a HMM profile. Useful for model validation and sequence simulation based on the created HMM model.</p>
+                <a href="{% url 'hmmemit_form' %}" class="tool-link">Use Tool</a>
+            </div>
+            <div class="tool-card">
+                <div class="tool-icon">
+                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Search Icon">
+                        <defs>
+                            <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#E8F2FA;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#B8D8F0;stop-opacity:1" />
+                            </linearGradient>
+                            <linearGradient id="handleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#6B9FD8;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#4A7DB5;stop-opacity:1" />
+                            </linearGradient>
+                            <radialGradient id="glareGrad" cx="30%" cy="30%">
+                                <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.8" />
+                                <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+                            </radialGradient>
+                        </defs>
+                        <circle cx="32" cy="32" r="20" fill="url(#glassGrad)" stroke="#4A7DB5" stroke-width="3"/>
+                        <circle cx="32" cy="32" r="16" fill="url(#glassGrad)" opacity="0.6"/>
+                        <circle cx="26" cy="26" r="8" fill="url(#glareGrad)"/>
+                        <circle cx="38" cy="38" r="4" fill="#FFFFFF" opacity="0.3"/>
+                        <line x1="47" y1="47" x2="65" y2="65" stroke="url(#handleGrad)" stroke-width="7" stroke-linecap="round"/>
+                        <line x1="47" y1="47" x2="65" y2="65" stroke="#8BB5E0" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+                        <path d="M 20 24 A 18 18 0 0 1 38 16" stroke="#8BB5E0" stroke-width="2" stroke-linecap="round" opacity="0.7" fill="none"/>
+                    </svg>
+                </div>
+                <h3>HMMSEARCH</h3>
+                <p>Search sequences against a HMM profile.
+                    Useful for identifying homologous sequences and domain-level matches.</p>
+                <a href="{% url 'hmmsearch_form' %}" class="tool-link">Use Tool</a>
+            </div>
+        </div>
+    </div>
+
+    {% if not user.is_authenticated %}
+    <div class="cta-section">
+        <h2 class="section-title">Get Started</h2>
+        <p class="cta-text">Create an account to save and manage your projects, share results with colleagues.</p>
+        <div class="cta-buttons">
+            <a href="{% url 'register' %}" class="button-primary">Register</a>
+            <a href="{% url 'login' %}" class="button-secondary">Login</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="public-section">
+        <h2 class="section-title">Public Projects</h2>
+        <p class="section-text">Browse other users' analysis projects and results.</p>
+        <a href="{% url 'public-projects' %}" class="button-secondary">View Public Projects</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,257 @@
+{
+  "tool_id": "clustalo",
+  "display_name": "Clustal Omega",
+  "executable": "clustalo",
+  "fixed_args": [
+    "--force"
+  ],
+  "supported_output_formats": ["stockholm", "clustal", "fasta", "phylip", "vienna"],
+  "parameters": [
+    {
+      "name": "seqtype",
+      "label": "Sequence type (--seqtype)",
+      "section": "Basic",
+      "flag": "--seqtype",
+      "type": "select",
+      "default": null,
+      "options": ["Protein", "DNA", "RNA"],
+      "flag_style": "equals",
+      "help_text": "Force input sequence type. Leave empty to auto-detect."
+    },
+    {
+      "name": "threads",
+      "label": "Threads (--threads)",
+      "section": "Basic",
+      "flag": "--threads",
+      "type": "number",
+      "default": 1,
+      "min": 1,
+      "max": 16,
+      "flag_style": "equals",
+      "help_text": "Number of CPU cores to use. Requires a Clustal Omega build with OpenMP support; on non-OpenMP builds, leave at 1."
+    },
+    {
+      "name": "auto",
+      "label": "Auto settings (--auto)",
+      "section": "Basic",
+      "flag": "--auto",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Let Clustal Omega pick reasonable defaults based on input size (may override other settings)."
+    },
+    {
+      "name": "full",
+      "label": "Full distance matrix (--full)",
+      "section": "Basic",
+      "flag": "--full",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use the full distance matrix instead of the mBed heuristic. Slower but more accurate on small inputs."
+    },
+    {
+      "name": "iter",
+      "label": "Iterations (--iter)",
+      "section": "Basic",
+      "flag": "--iter",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 5,
+      "flag_style": "equals",
+      "help_text": "Number of combined guide-tree / HMM iterations. Higher = slower, potentially more accurate. Conflicts with --pileup."
+    },
+    {
+      "name": "full_iter",
+      "label": "Full distance matrix during iteration (--full-iter)",
+      "section": "Advanced",
+      "flag": "--full-iter",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use the full distance matrix during iteration (slowish). Only meaningful when iterations > 0.",
+      "depends_on": {"field": "iter", "values": [1, 2, 3, 4, 5]}
+    },
+    {
+      "name": "max_guidetree_iterations",
+      "label": "Max guide-tree iterations (--max-guidetree-iterations)",
+      "section": "Advanced",
+      "flag": "--max-guidetree-iterations",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 10,
+      "flag_style": "equals",
+      "help_text": "Cap the guide-tree iteration count. Leave empty to follow --iter.",
+      "depends_on": {"field": "iter", "values": [1, 2, 3, 4, 5]}
+    },
+    {
+      "name": "max_hmm_iterations",
+      "label": "Max HMM iterations (--max-hmm-iterations)",
+      "section": "Advanced",
+      "flag": "--max-hmm-iterations",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 10,
+      "flag_style": "equals",
+      "help_text": "Cap the HMM iteration count. Leave empty to follow --iter.",
+      "depends_on": {"field": "iter", "values": [1, 2, 3, 4, 5]}
+    },
+    {
+      "name": "use_kimura",
+      "label": "Kimura distance correction (--use-kimura)",
+      "section": "Advanced",
+      "flag": "--use-kimura",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Use Kimura distance correction when computing distances from already-aligned input."
+    },
+    {
+      "name": "percent_id",
+      "label": "Output percent identity (--percent-id)",
+      "section": "Advanced",
+      "flag": "--percent-id",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Convert distances into percent identities."
+    },
+    {
+      "name": "dealign",
+      "label": "Dealign input (--dealign)",
+      "section": "Advanced",
+      "flag": "--dealign",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Remove any existing alignment (gaps) from input sequences before aligning. Useful when re-aligning a previously aligned file."
+    },
+    {
+      "name": "infmt",
+      "label": "Input format (--infmt)",
+      "section": "Advanced",
+      "flag": "--infmt",
+      "type": "select",
+      "default": null,
+      "options": ["fasta", "clustal", "msf", "phylip", "selex", "stockholm", "vienna"],
+      "flag_style": "equals",
+      "help_text": "Force input file format. Leave empty for auto-detection."
+    },
+    {
+      "name": "cluster_size",
+      "label": "Cluster size (--cluster-size)",
+      "section": "Expert",
+      "flag": "--cluster-size",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 1000,
+      "flag_style": "equals",
+      "help_text": "Soft maximum number of sequences per mBed sub-cluster. Leave empty for default."
+    },
+    {
+      "name": "trans",
+      "label": "Transitivity (--trans)",
+      "section": "Expert",
+      "flag": "--trans",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 2,
+      "flag_style": "equals",
+      "help_text": "Use transitivity (0 = off, 1 or 2 = enabled)."
+    },
+    {
+      "name": "pileup",
+      "label": "Sequential pileup (--pileup)",
+      "section": "Expert",
+      "flag": "--pileup",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Sequentially align sequences. Conflicts with iterations > 0.",
+      "depends_on": {"field": "iter", "value": 0}
+    },
+    {
+      "name": "maxnumseq",
+      "label": "Max number of sequences (--maxnumseq)",
+      "section": "Expert",
+      "flag": "--maxnumseq",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 100000,
+      "flag_style": "equals",
+      "help_text": "Maximum allowed number of sequences. The run will abort early if this limit is exceeded. Leave empty for no limit."
+    },
+    {
+      "name": "maxseqlen",
+      "label": "Max sequence length (--maxseqlen)",
+      "section": "Expert",
+      "flag": "--maxseqlen",
+      "type": "number",
+      "default": null,
+      "min": 1,
+      "max": 100000,
+      "flag_style": "equals",
+      "help_text": "Maximum allowed sequence length. The run will abort early if any sequence exceeds this length. Leave empty for no limit."
+    },
+    {
+      "name": "mac_ram",
+      "label": "MAC RAM limit in MB (--MAC-RAM)",
+      "section": "Expert",
+      "flag": "--MAC-RAM",
+      "type": "number",
+      "default": null,
+      "min": 256,
+      "max": 65536,
+      "flag_style": "equals",
+      "help_text": "Maximum RAM (in MB) for the MAC alignment stage. Leave empty for default."
+    },
+    {
+      "name": "output_order",
+      "label": "Output order (--output-order)",
+      "section": "Output",
+      "flag": "--output-order",
+      "type": "select",
+      "default": null,
+      "options": ["input-order", "tree-order"],
+      "flag_style": "equals",
+      "help_text": "Order sequences in output like the input file or like the guide tree. Leave empty for default."
+    },
+    {
+      "name": "wrap",
+      "label": "Line wrap (--wrap)",
+      "section": "Output",
+      "flag": "--wrap",
+      "type": "number",
+      "default": null,
+      "min": 20,
+      "max": 500,
+      "flag_style": "equals",
+      "help_text": "Number of residues per line in the output. Mainly affects Clustal/Stockholm formats."
+    },
+    {
+      "name": "residuenumber",
+      "label": "Show residue numbers in Clustal output (--residuenumber)",
+      "section": "Output",
+      "flag": "--residuenumber",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Print residue numbers. Only takes effect when the output format is Clustal."
+    },
+    {
+      "name": "outfmt",
+      "label": "Output format",
+      "section": "Input / output",
+      "flag": "--outfmt",
+      "type": "select",
+      "default": null,
+      "options": [
+        "fasta",
+        "clustal",
+        "stockholm",
+        "phylip",
+        "vienna"
+      ],
+      "flag_style": "equals",
+      "ui_hidden": true
+    }
+  ]
+}

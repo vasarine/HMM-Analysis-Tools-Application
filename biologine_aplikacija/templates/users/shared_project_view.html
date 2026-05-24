@@ -1,0 +1,1620 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="app-page sv-page saved-result-view view-detail-page" data-view-context="{{ view_context }}">
+
+  {% if back_url and back_label %}
+  <a href="{{ back_url }}" class="app-back-link">← {{ back_label }}</a>
+  {% endif %}
+
+  
+  <div class="sv-hero">
+    <div class="sv-hero-main">
+      <h1 class="sv-hero-title">{{ project_title }}</h1>
+      <div class="sv-hero-meta" aria-label="Project metadata">
+        {% if tool_label %}
+        <span class="sv-tool-badge">{{ tool_label }}</span>
+        {% endif %}
+        {% if project.task_status == 'FAILURE' %}
+          <span class="sv-hero-status sv-hero-status-err">Failed</span>
+        {% elif project.task_status == 'PENDING' or project.task_status == 'STARTED' %}
+          <span class="sv-hero-status sv-hero-status-run">Running</span>
+        {% endif %}
+        {% if visibility_label %}
+        <span class="sv-visibility sv-v-{{ visibility_key }}">{{ visibility_label }}</span>
+        {% endif %}
+        {% if project.created_at %}
+        <span class="sv-hero-meta-item">{{ project.created_at|date:"j M Y, H:i" }}</span>
+        {% endif %}
+        {% if project.user.username %}
+        <span class="sv-hero-meta-item">{{ project.user.username }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="sv-hero-actions">
+      {% if can_share %}
+      <a href="{% url 'share-project' tool project.id %}" class="sv-btn sv-btn-ghost">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share
+      </a>
+      {% endif %}
+      {% if can_delete %}
+      <form method="post" action="{% url 'delete_project' project.id %}?tool={{ tool }}" class="sv-delete-form"
+            onsubmit="return confirm('Delete this project? This cannot be undone.');">
+        {% csrf_token %}
+        <input type="hidden" name="from_tool" value="{{ delete_from_tool }}">
+        <button type="submit" class="sv-btn sv-btn-danger">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Delete
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  
+  <section class="sv-quick">
+    <div class="sv-quick-message">
+      {% if tool == 'hmmbuild' %}
+        HMM profile generated
+      {% elif tool == 'hmmemit' %}
+        Sequences generated
+      {% elif tool == 'hmmsearch' %}
+        Search completed
+      {% elif tool == 'fasta_validate' %}
+        Validation completed
+      {% elif tool == 'sequence_cleaner' %}
+        Cleaned FASTA ready
+      {% elif tool == 'clustalo' %}
+        Multiple sequence alignment generated
+      {% elif tool == 'format_convert' %}
+        Alignment format converted
+      {% elif tool == 'workflow_run' %}
+        Workflow completed
+      {% else %}
+        {{ project.summary_line|default:"Project result summary" }}
+      {% endif %}
+    </div>
+    <div class="sv-quick-stats">
+      {% if tool == 'hmmsearch' %}
+      <span><strong>{{ target_hits|default:0 }}</strong> hits</span>
+      {% elif tool == 'fasta_validate' and project.stats %}
+      {% if project.stats.sequence_count or project.stats.num_sequences %}<span><strong>{% if project.stats.sequence_count %}{{ project.stats.sequence_count }}{% else %}{{ project.stats.num_sequences }}{% endif %}</strong> sequences</span>{% endif %}
+      <span><strong>{{ project.stats.errors|length|default:0 }}</strong> errors</span>
+      <span><strong>{{ project.stats.warnings|length|default:0 }}</strong> warnings</span>
+      {% elif tool == 'sequence_cleaner' and project.stats %}
+      {% if project.stats.original_count %}<span><strong>{{ project.stats.original_count }}</strong> in</span>{% endif %}
+      {% if project.stats.final_count %}<span><strong>{{ project.stats.final_count }}</strong> out</span>{% endif %}
+      {% elif tool == 'workflow_run' %}
+      <span><strong>{{ workflow_steps|length }}</strong> steps</span>
+      {% endif %}
+    </div>
+  </section>
+
+  
+  <div class="sv-section-heading">
+    <span class="sv-section-title">Files</span>
+  </div>
+  <section class="sv-files">
+
+    <div class="sv-panel sv-files-col">
+      <div class="sv-col-label">Input</div>
+
+      {% if tool == 'hmmbuild' %}
+        {% if project.msa_file %}
+          {% if can_download_input %}
+          <a href="{% url 'hmmbuild_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ hmmbuild_input_filename }}</div>
+              <div class="sv-file-type">Multiple sequence alignment</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ hmmbuild_input_filename }}</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'hmmsearch' %}
+        {% if project.fasta_file %}
+          {% if can_download_input %}
+          <a href="{% url 'hmmsearch_fasta_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">sequences.fasta</div>
+              <div class="sv-file-type">FASTA sequence database</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">sequences.fasta</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {% if project.hmm_source == 'pfam' %}
+        <div class="sv-file sv-file-static">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">{{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</div>
+            <div class="sv-file-type">Pfam library entry</div>
+          </div>
+        </div>
+        {% elif project.hmm_source == 'interpro' %}
+        <div class="sv-file sv-file-static">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">{{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</div>
+            <div class="sv-file-type">InterPro library entry</div>
+          </div>
+        </div>
+        {% elif project.hmm_file %}
+          {% if can_download_input %}
+          <a href="{% url 'hmmsearch_hmm_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">profile.hmm</div>
+              <div class="sv-file-type">HMM profile</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">profile.hmm</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'hmmemit' %}
+        {% if project.hmm_source == 'pfam' %}
+        <div class="sv-file sv-file-static">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">{{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</div>
+            <div class="sv-file-type">Pfam library entry</div>
+          </div>
+        </div>
+        {% elif project.hmm_source == 'interpro' %}
+        <div class="sv-file sv-file-static">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">{{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</div>
+            <div class="sv-file-type">InterPro library entry</div>
+          </div>
+        </div>
+        {% elif project.hmm_file %}
+          {% if can_download_input %}
+          <a href="{% url 'hmmemit_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">profile.hmm</div>
+              <div class="sv-file-type">HMM profile</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">profile.hmm</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'fasta_validate' %}
+        {% if project.input_fasta %}
+          {% if can_download_input %}
+          <a href="{% url 'fasta_validate_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Input FASTA sequences</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'sequence_cleaner' %}
+        {% if project.input_fasta %}
+          {% if can_download_input %}
+          <a href="{% url 'fasta_clean_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Input FASTA sequences</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'clustalo' %}
+        {% if project.input_fasta %}
+          {% if can_download_input %}
+          <a href="{% url 'clustalo_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Input FASTA sequences</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'format_convert' %}
+        {% if project.input_file %}
+          {% if can_download_input %}
+          <a href="{% url 'format_convert_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ format_convert_input_filename }}</div>
+              <div class="sv-file-type">{{ project.get_input_format_display }}</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ format_convert_input_filename }}</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'workflow_run' %}
+        {% if project.input_file %}
+          {% if can_download_input %}
+          <a href="{% url 'workflow_run_input_download' project.id %}" class="sv-file">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Pipeline input sequences</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">input.fasta</div>
+              <div class="sv-file-type">Input files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="sv-panel sv-files-col">
+      <div class="sv-col-label">Output</div>
+
+      {% if tool == 'hmmbuild' %}
+        {% if project.hmm_file %}
+          {% if can_download_output %}
+          <a href="{% url 'hmmbuild_output_download' project.id %}" class="sv-file sv-file-primary">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">profile.hmm</div>
+              <div class="sv-file-type">HMM profile</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">profile.hmm</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {% if project.annotated_msa_file and can_download_output %}
+        <a href="{% url 'hmmbuild_annotated_download' project.id %}" class="sv-file">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">annotated.sto</div>
+            <div class="sv-file-type">Annotated MSA</div>
+          </div>
+          <div class="sv-file-action" title="Download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </a>
+        {% endif %}
+
+      {% elif tool == 'hmmsearch' %}
+        {% if project.out_file %}
+          {% if can_download_output %}
+          <a href="{% url 'hmmsearch_output_download' project.id %}" class="sv-file sv-file-primary">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">results.out</div>
+              <div class="sv-file-type">Full HMMER output</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">results.out</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {% if project.tblout_file and can_download_output %}
+        <a href="{% url 'hmmsearch_output_download_typed' project.id 'tblout' %}" class="sv-file">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">results.tblout</div>
+            <div class="sv-file-type">Per-target hits table</div>
+          </div>
+          <div class="sv-file-action" title="Download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </a>
+        {% endif %}
+        {% if project.domtbl_file and can_download_output %}
+        <a href="{% url 'hmmsearch_output_download_typed' project.id 'domtbl' %}" class="sv-file">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">results.domtbl</div>
+            <div class="sv-file-type">Per-domain hits table</div>
+          </div>
+          <div class="sv-file-action" title="Download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </a>
+        {% endif %}
+        {% if project.hits_msa_file and can_download_output %}
+        <a href="{% url 'hmmsearch_output_download_typed' project.id 'hits_msa' %}" class="sv-file">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">hits_alignment.sto</div>
+            <div class="sv-file-type">Hits alignment</div>
+          </div>
+          <div class="sv-file-action" title="Download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </a>
+        {% endif %}
+        {% if project.pfamtbl_file and can_download_output %}
+        <a href="{% url 'hmmsearch_output_download_typed' project.id 'pfamtbl' %}" class="sv-file">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">results.pfamtbl</div>
+            <div class="sv-file-type">Pfam-format table</div>
+          </div>
+          <div class="sv-file-action" title="Download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </a>
+        {% endif %}
+
+      {% elif tool == 'hmmemit' %}
+        {% if project.output_file %}
+          {% if can_download_output %}
+          <a href="{% url 'hmmemit_output_download' project.id %}" class="sv-file sv-file-primary">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ hmmemit_output_filename }}</div>
+              <div class="sv-file-type">{% if hmmemit_output_filename|slice:"-4:" == ".sto" %}Stockholm alignment{% else %}Emitted FASTA sequences{% endif %}</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ hmmemit_output_filename }}</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'fasta_validate' %}
+        {% if project.stats %}
+        <div class="sv-file sv-file-static">
+          <div class="sv-file-meta">
+            <div class="sv-file-name">Validation results</div>
+            <div class="sv-file-type">
+              {% if project.stats.sequence_count %}{{ project.stats.sequence_count }} sequences{% elif project.stats.num_sequences %}{{ project.stats.num_sequences }} sequences{% endif %}
+              {% if project.stats.valid %} - valid{% elif project.stats.errors %} - {{ project.stats.errors|length|default:0 }} error(s){% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      {% elif tool == 'sequence_cleaner' %}
+        {% if project.output_fasta %}
+          {% if can_download_output %}
+          <a href="{% url 'fasta_clean_download' project.id %}" class="sv-file sv-file-primary">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">cleaned.fasta</div>
+              <div class="sv-file-type">Cleaned sequences</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">cleaned.fasta</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'clustalo' %}
+        {% if project.output_alignment %}
+          {% if can_download_output %}
+          <a href="{% url 'clustalo_download' project.id %}" class="sv-file sv-file-primary">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">alignment.{{ project.output_format }}</div>
+              <div class="sv-file-type">Multiple sequence alignment</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">alignment.{{ project.output_format }}</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'format_convert' %}
+        {% if project.output_file %}
+          {% if can_download_output %}
+          <a href="{% url 'format_convert_download' project.id %}" class="sv-file sv-file-primary">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ format_convert_output_filename }}</div>
+              <div class="sv-file-type">{{ project.get_output_format_display }}</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ format_convert_output_filename }}</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+
+      {% elif tool == 'workflow_run' %}
+        {% if workflow_hmmsearch_outputs %}
+          {% if can_download_output %}
+            {% for output in workflow_hmmsearch_outputs %}
+            <a href="{{ output.url }}" class="sv-file {% if forloop.first %}sv-file-primary{% endif %}">
+              <div class="sv-file-meta">
+                <div class="sv-file-name">{{ output.name }}</div>
+                <div class="sv-file-type">{{ output.description }}</div>
+              </div>
+              <div class="sv-file-action" title="Download">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
+            </a>
+            {% endfor %}
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">HMMSEARCH outputs</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% elif project.output_file %}
+          {% if can_download_output %}
+          <a href="{% url 'workflow_run_download' project.id %}" class="sv-file sv-file-primary">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ workflow_output_label|default:"workflow_output" }}</div>
+              <div class="sv-file-type">Final pipeline output file</div>
+            </div>
+            <div class="sv-file-action" title="Download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          {% else %}
+          <div class="sv-file sv-file-static sv-file-hidden">
+            <div class="sv-file-meta">
+              <div class="sv-file-name">{{ workflow_output_label|default:"workflow_output" }}</div>
+              <div class="sv-file-type">Output files are not shared by the project owner.</div>
+            </div>
+          </div>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+    </div>
+  </section>
+
+  
+  {% if report_rows or project.summary_line or report_note or workflow_steps or parameter_overrides %}
+  <section class="sv-report">
+    <div class="sv-section-heading sv-section-heading--compact">
+      <span class="sv-section-title">Analysis Report</span>
+    </div>
+
+    {% if report_rows %}
+    <div class="sv-report-grid">
+      {% for row in report_rows %}
+      {% if tool == 'workflow_run' and row.label == 'Status' %}
+      {% elif tool == 'workflow_run' and row.label == 'Completed steps' %}
+      {% else %}
+      <div class="sv-report-row">
+        <span class="sv-report-label">{{ row.label }}</span>
+        <span class="sv-report-value">{{ row.value }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% include "_parameter_overrides.html" %}
+
+    {% if tool == 'fasta_validate' and project.stats %}
+    {% if project.stats.errors or project.stats.warnings %}
+    <div class="sv-detail-block">
+      <div class="sv-detail-title">Issues</div>
+      <div class="sv-message-list">
+        {% for err in project.stats.errors %}
+        <div class="sv-message sv-message-err"><strong>Error</strong><span>{{ err }}</span></div>
+        {% endfor %}
+        {% for warning in project.stats.warnings %}
+        <div class="sv-message sv-message-warn"><strong>Warning</strong><span>{{ warning }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if tool == 'hmmsearch' %}
+    <div class="sv-detail-block">
+      <div class="sv-detail-title">Top target hits</div>
+      {% if top_hits %}
+      <div class="sv-hit-table-wrap">
+        <table class="sv-hit-table">
+          <thead>
+            <tr>
+              <th>Target</th>
+              <th>Query</th>
+              <th>E-value</th>
+              <th>Score</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for hit in top_hits %}
+            <tr>
+              <td>{{ hit.target }}{% if hit.accession %}<span>{{ hit.accession }}</span>{% endif %}</td>
+              <td>{{ hit.query }}</td>
+              <td>{{ hit.evalue }}</td>
+              <td>{{ hit.score }}</td>
+              <td>{{ hit.description|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="sv-empty-result">No target hits were detected in results.tblout. Download the full outputs to inspect the raw HMMER report.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if workflow_step_rows %}
+    <div class="sv-workflow-flow">
+      {% for step in workflow_step_rows %}
+      <div class="sv-workflow-step sv-workflow-{{ step.status|lower }}">
+        <div class="sv-workflow-num">{{ step.number }}</div>
+        <div class="sv-workflow-main">
+          <div class="sv-workflow-name">{{ step.label }}</div>
+          <div class="sv-workflow-meta">{{ step.tool }}{% if step.output %} - {{ step.output }}{% endif %}</div>
+          {% if step.error %}<div class="sv-workflow-error">{{ step.error }}</div>{% endif %}
+          {% if can_download_output and step.status == 'SUCCESS' %}
+          {% if step.download_url %}
+          <div class="sv-step-files">
+            <a href="{{ step.download_url }}" class="sv-step-dl" download>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              {{ step.output }}
+            </a>
+            {% if step.preview_text %}
+            <button type="button" class="sv-step-preview-btn" onclick="toggleSvStep(this, 'svsp-{{ project.id }}-{{ step.number }}')">
+              <span>Show preview</span>
+              <svg class="sv-step-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {% endif %}
+          </div>
+          {% if step.preview_text %}
+          <div id="svsp-{{ project.id }}-{{ step.number }}" class="sv-step-preview" style="display:none;">
+            <pre class="sv-step-pre">{{ step.preview_text }}</pre>
+          </div>
+          {% endif %}
+          {% endif %}
+          {% if step.hmmsearch_items %}
+            {% for hitem in step.hmmsearch_items %}
+            <div class="sv-step-files">
+              <a href="{{ hitem.url }}" class="sv-step-dl" download>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                {{ hitem.label }}
+              </a>
+              {% if hitem.preview %}
+              <button type="button" class="sv-step-preview-btn" onclick="toggleSvStep(this, 'svsp-{{ project.id }}-{{ step.number }}-{{ forloop.counter }}')">
+                <span>Show preview</span>
+                <svg class="sv-step-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {% endif %}
+            </div>
+            {% if hitem.preview %}
+            <div id="svsp-{{ project.id }}-{{ step.number }}-{{ forloop.counter }}" class="sv-step-preview" style="display:none;">
+              <pre class="sv-step-pre">{{ hitem.preview }}</pre>
+            </div>
+            {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% endif %}
+          {% if step.parameter_overrides.has_schema and step.parameter_overrides.overrides %}
+          {% include "_parameter_overrides.html" with parameter_overrides=step.parameter_overrides compact=True %}
+          {% endif %}
+        </div>
+        <span class="sv-workflow-status">{{ step.status|title }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if report_note %}
+    <div class="sv-report-note">{{ report_note }}</div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  
+  {% if has_next_actions %}
+  {% if tool == 'hmmbuild' and project.hmm_file or tool == 'fasta_validate' or tool == 'sequence_cleaner' and project.output_fasta or tool == 'clustalo' and project.output_alignment or tool == 'format_convert' and project.output_file %}
+  <section class="sv-next">
+    <div class="sv-next-heading">
+      <span class="sv-next-eyebrow">Next actions</span>
+    </div>
+    <div class="sv-next-grid">
+      {% if tool == 'hmmbuild' and project.hmm_file %}
+      <a href="{% url 'hmmsearch_form' %}?from_hmmbuild={{ project.id }}" class="sv-next-card">
+        <div class="sv-next-icon sv-next-icon-search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="sv-next-body">
+          <div class="sv-next-title">Search a database</div>
+          <div class="sv-next-desc">Find sequences matching this profile in a FASTA file using HMMSEARCH.</div>
+        </div>
+        <svg class="sv-next-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      <a href="{% url 'hmmemit_form' %}?from_hmmbuild={{ project.id }}" class="sv-next-card">
+        <div class="sv-next-icon sv-next-icon-emit">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="sv-next-body">
+          <div class="sv-next-title">Emit sample sequences</div>
+          <div class="sv-next-desc">Generate representative sequences from this profile using HMMEMIT.</div>
+        </div>
+        <svg class="sv-next-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      {% elif tool == 'fasta_validate' %}
+      <a href="{% url 'fasta_clean' %}?from_fasta_validate={{ project.id }}" class="sv-next-card">
+        <div class="sv-next-icon sv-next-icon-clean">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        </div>
+        <div class="sv-next-body">
+          <div class="sv-next-title">Clean sequences</div>
+          <div class="sv-next-desc">Clean and normalize these sequences before further analysis.</div>
+        </div>
+        <svg class="sv-next-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      <a href="{% url 'clustalo_form' %}?from_fasta_validate={{ project.id }}" class="sv-next-card">
+        <div class="sv-next-icon sv-next-icon-align">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+        </div>
+        <div class="sv-next-body">
+          <div class="sv-next-title">Run MSA</div>
+          <div class="sv-next-desc">Align the validated sequences using MSA.</div>
+        </div>
+        <svg class="sv-next-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      {% elif tool == 'sequence_cleaner' and project.output_fasta %}
+      <a href="{% url 'clustalo_form' %}?from_clean={{ project.id }}" class="sv-next-card">
+        <div class="sv-next-icon sv-next-icon-align">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+        </div>
+        <div class="sv-next-body">
+          <div class="sv-next-title">Run MSA</div>
+          <div class="sv-next-desc">Align the cleaned FASTA output using MSA.</div>
+        </div>
+        <svg class="sv-next-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      {% elif tool == 'clustalo' and project.output_alignment %}
+      <a href="{% url 'hmmbuild_form' %}?from_clustalo={{ project.id }}" class="sv-next-card">
+        <div class="sv-next-icon sv-next-icon-profile">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+        </div>
+        <div class="sv-next-body">
+          <div class="sv-next-title">Build HMM profile</div>
+          <div class="sv-next-desc">Use this alignment in HMMBUILD.</div>
+        </div>
+        <svg class="sv-next-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      {% elif tool == 'format_convert' and project.output_file %}
+      <a href="{% url 'hmmbuild_form' %}?from_convert={{ project.id }}" class="sv-next-card">
+        <div class="sv-next-icon sv-next-icon-profile">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+        </div>
+        <div class="sv-next-body">
+          <div class="sv-next-title">Build HMM profile</div>
+          <div class="sv-next-desc">Use this Stockholm alignment in HMMBUILD.</div>
+        </div>
+        <svg class="sv-next-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+  {% endif %}
+
+  
+  {% if can_view_preview and project.preview.text %}
+  <section class="sv-preview" data-sv-open="false">
+    <button type="button" class="sv-preview-head" onclick="svPreviewToggle(this)" aria-expanded="false">
+      <svg class="sv-preview-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+      <span class="sv-preview-title">{{ project.preview.label|default:"Output preview" }}</span>
+      {% if project.preview.is_truncated %}<span class="sv-preview-sub">Limited preview</span>{% endif %}
+    </button>
+    <div class="sv-preview-body" style="display:none;">
+      <pre class="sv-pre{% if tool == 'workflow_run' %} sv-pre--full{% endif %}">{{ project.preview.text }}</pre>
+      {% if project.preview.note %}<div class="sv-preview-note">{{ project.preview.note }}</div>{% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if can_view_preview and project.extra_previews %}
+    {% for extra_preview in project.extra_previews %}
+    {% if extra_preview.text %}
+    <section class="sv-preview" data-sv-open="false">
+      <button type="button" class="sv-preview-head" onclick="svPreviewToggle(this)" aria-expanded="false">
+        <svg class="sv-preview-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-90deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="sv-preview-title">{{ extra_preview.label }}</span>
+        {% if extra_preview.is_truncated %}<span class="sv-preview-sub">Limited preview</span>{% endif %}
+      </button>
+      <div class="sv-preview-body" style="display:none;">
+        <pre class="sv-pre">{{ extra_preview.text }}</pre>
+        {% if extra_preview.note %}<div class="sv-preview-note">{{ extra_preview.note }}</div>{% endif %}
+      </div>
+    </section>
+    {% endif %}
+    {% endfor %}
+  {% endif %}
+
+  <script>
+  function toggleSvStep(btn, contentId) {
+    var content = document.getElementById(contentId);
+    if (!content) return;
+    var chev = btn.querySelector('.sv-step-chev');
+    var label = btn.querySelector('span');
+    var open = content.style.display !== 'none';
+    content.style.display = open ? 'none' : 'block';
+    if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+    if (label) label.textContent = open ? 'Show preview' : 'Hide preview';
+  }
+  function svPreviewToggle(btn) {
+    var section = btn.closest('.sv-preview');
+    var body = section.querySelector('.sv-preview-body');
+    var chev = btn.querySelector('.sv-preview-chev');
+    var open = section.getAttribute('data-sv-open') === 'true';
+    var next = !open;
+    section.setAttribute('data-sv-open', String(next));
+    btn.setAttribute('aria-expanded', String(next));
+    body.style.display = next ? 'block' : 'none';
+    if (chev) chev.style.transform = next ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+  function svpToggle(btn) {
+    var card = btn.closest('.svp-card');
+    var body = card.querySelector('.svp-body');
+    var chev = btn.querySelector('.svp-chev');
+    var open = card.getAttribute('data-svp-open') === 'true';
+    var next = !open;
+    card.setAttribute('data-svp-open', String(next));
+    btn.setAttribute('aria-expanded', String(next));
+    if (next) { body.removeAttribute('hidden'); }
+    else      { body.setAttribute('hidden', ''); }
+    if (chev) chev.style.transform = next ? 'rotate(0deg)' : 'rotate(-90deg)';
+  }
+  </script>
+</div>
+
+<style>
+.sv-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px 0 80px;
+}
+
+.sv-hero {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap;
+  padding: 0 0 24px 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 28px;
+}
+.sv-hero-main { min-width: 0; flex: 1; }
+.sv-hero-title {
+  font-size: 26px; font-weight: 700; letter-spacing: -0.4px;
+  margin: 0 0 8px 0;
+  color: #1e2d45;
+  word-break: break-word;
+  line-height: 1.2;
+}
+.sv-hero-meta {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12.5px; color: #7a8fa8;
+}
+.sv-hero-tool {
+  font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #4a6396;
+  font-size: 11.5px;
+}
+.sv-hero-dot { color: #cbd5e1; user-select: none; }
+.sv-hero-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-weight: 600;
+}
+.sv-hero-status-ok  { color: #2e7a52; }
+.sv-hero-status-err { color: #b54141; }
+.sv-hero-status-run { color: #b87a1f; }
+.sv-hero-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sv-delete-form { display: inline-flex; margin: 0; }
+
+.sv-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px; box-sizing: border-box;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 500; line-height: 1;
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.sv-btn-ghost {
+  background: #ffffff; color: #3a4a60; border: 1px solid #d8e0eb;
+}
+.sv-btn-ghost:hover { background: #f4f7fb; border-color: #6b8cba; color: #1e3a5f; }
+.sv-btn-danger {
+  background: #fff8f8;
+  color: #8f2f2f;
+  border: 1px solid #ead2d2;
+  font-family: inherit;
+}
+.sv-btn-danger:hover {
+  background: #fff0f0;
+  border-color: #c99393;
+  color: #7a2828;
+}
+
+.sv-files {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.sv-files-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sv-col-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.sv-file {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  text-decoration: none; color: inherit;
+  transition: border-color .12s, background .12s;
+}
+.sv-file:hover {
+  border-color: #6b8cba;
+  background: #fafbfd;
+}
+.sv-file:hover .sv-file-action { color: #243e6a; }
+.sv-file-static { cursor: default; }
+.sv-file-static:hover { border-color: #e2e8f0; background: #ffffff; }
+.sv-file-hidden { background: #f8fafc; border-style: dashed; }
+.sv-file-hidden .sv-file-type { color: #94a3b8; font-style: italic; }
+
+.sv-file-meta { flex: 1; min-width: 0; }
+.sv-file-name {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px; font-weight: 600; color: #1e2d45;
+  letter-spacing: -0.1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sv-file-type {
+  font-size: 11.5px; color: #7a8fa8;
+  margin-top: 2px;
+}
+.sv-file-action {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #94a3b8; flex-shrink: 0;
+  transition: color .12s;
+}
+.sv-file-static .sv-file-action { display: none; }
+
+.sv-file-primary {
+  border-color: #c8d4e8;
+  background: #fafbfd;
+}
+.sv-file-primary:hover { border-color: #4a6396; background: #f4f7fb; }
+.sv-file-primary .sv-file-action { color: #243e6a; }
+
+.sv-next { margin-bottom: 28px; }
+.sv-next-heading { margin-bottom: 12px; }
+.sv-next-eyebrow {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+.sv-next-sub { font-size: 12.5px; color: #7a8fa8; }
+
+.sv-next-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.sv-next-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  text-decoration: none; color: inherit;
+  transition: border-color .12s, background .12s;
+}
+.sv-next-card:hover {
+  border-color: #6b8cba;
+  background: #fafbfd;
+}
+.sv-next-card:hover .sv-next-arrow { transform: translateX(3px); color: #243e6a; }
+
+.sv-next-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.sv-next-icon-search { background: #fdf6e3; color: #8a5e28; }
+.sv-next-icon-emit   { background: #f4f0fb; color: #5c3a8a; }
+
+.sv-next-body { flex: 1; min-width: 0; }
+.sv-next-title {
+  font-size: 13.5px; font-weight: 600; color: #1e2d45;
+  margin-bottom: 2px;
+}
+.sv-next-desc {
+  font-size: 12px; color: #7a8fa8; line-height: 1.5;
+}
+.sv-next-arrow {
+  color: #94a3b8; flex-shrink: 0;
+  transition: transform .15s, color .15s;
+}
+
+.sv-preview {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.sv-preview + .sv-preview { margin-top: 14px; }
+.sv-preview-head {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 12px 16px;
+  background: #fafbfd;
+  border: none; border-bottom: 1px solid #e2e8f0;
+  cursor: pointer; font-family: inherit;
+  text-align: left;
+  transition: background .12s;
+}
+.sv-preview[data-sv-open="false"] .sv-preview-head { border-bottom: none; }
+.sv-preview-head:hover { background: #f4f7fb; }
+.sv-preview-chev {
+  color: #4a6396; flex-shrink: 0;
+  transition: transform .18s ease;
+}
+.sv-preview-title {
+  font-size: 13px; font-weight: 600; color: #1e2d45;
+  letter-spacing: -0.1px;
+}
+.sv-preview-sub {
+  font-size: 11.5px; color: #94a3b8;
+  margin-left: auto;
+}
+.sv-preview-body { padding: 14px 16px; }
+
+.sv-pre {
+  margin: 0;
+  font-size: 11.5px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  color: #1e2d45;
+  background: #f8fafc;
+  border: 1px solid #e6ecf2;
+  border-radius: 6px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre;
+  line-height: 1.7;
+  max-height: 260px;
+  scrollbar-width: thin;
+  scrollbar-color: #c8d4e0 #f1f5f9;
+}
+.sv-pre--full {
+  max-height: 420px;
+  overflow-y: auto;
+}
+.sv-preview-note {
+  margin: 7px 0 0;
+  color: #7a8fa8;
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.45;
+}
+.sv-pre::-webkit-scrollbar { width: 8px; height: 8px; }
+.sv-pre::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+.sv-pre::-webkit-scrollbar-thumb {
+  background: #c8d4e0; border-radius: 8px; border: 2px solid #f1f5f9;
+}
+.sv-pre::-webkit-scrollbar-thumb:hover { background: #9eb1c7; }
+.sv-pre-nested { border-radius: 0 0 6px 6px; border-top: none; }
+
+.svp-card {
+  border: 1px solid #e6ecf2;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 12px;
+  background: #ffffff;
+}
+.svp-head {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 10px 14px;
+  background: #fafbfd;
+  border: none; border-bottom: 1px solid #f1f5f9;
+  cursor: pointer; font-family: inherit;
+  text-align: left; color: #1e2d45;
+  transition: background .12s;
+}
+.svp-card[data-svp-open="false"] .svp-head { border-bottom: none; }
+.svp-head:hover { background: #f4f7fb; }
+.svp-chev {
+  color: #4a6396; flex-shrink: 0;
+  transition: transform .18s ease;
+}
+.svp-title {
+  font-size: 13px; font-weight: 600; color: #1e2d45;
+  letter-spacing: -0.1px;
+}
+
+.saved-result-view {
+  max-width: 1040px;
+  padding: 6px 0 60px;
+}
+.saved-result-view .app-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: #4a6396;
+  font-weight: 700;
+  text-decoration: none;
+}
+.saved-result-view .sv-hero {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 0 18px;
+  margin-bottom: 18px;
+  align-items: flex-start;
+}
+.saved-result-view .sv-hero-title {
+  color: #17243a;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 8px;
+}
+.saved-result-view .sv-hero-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  color: #8a9bb1;
+  font-size: 12.5px;
+  font-weight: 400;
+  max-width: 880px;
+}
+.saved-result-view .sv-hero-meta > span:not(:first-child)::before {
+  content: "";
+  width: 1px;
+  height: 15px;
+  background: #d3deea;
+  margin-right: 9px;
+}
+.saved-result-view .sv-tool-badge {
+  min-height: 24px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d4dfeb;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #526987;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.saved-result-view .sv-hero-status,
+.saved-result-view .sv-visibility,
+.saved-result-view .sv-hero-meta-item {
+  display: inline-flex;
+  align-items: center;
+  color: #8a9bb1;
+  line-height: 1.2;
+}
+.saved-result-view .sv-hero-status-ok { color: #2e7a52; }
+.saved-result-view .sv-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding-top: 0;
+  line-height: 0;
+  flex-shrink: 0;
+}
+.saved-result-view .sv-delete-form {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+.saved-result-view .sv-btn {
+  display: inline-flex;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  vertical-align: top;
+  appearance: none;
+  font-family: inherit;
+}
+.saved-result-view .sv-btn svg {
+  display: block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+.saved-result-view .sv-btn-ghost {
+  background: #ffffff;
+  border-color: #cfdbea;
+  color: #243653;
+}
+.saved-result-view .sv-btn-danger {
+  background: #fffdfd;
+  border-color: #efcaca;
+  color: #b54141;
+}
+.saved-result-view .sv-quick {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 18px;
+  padding: 0 2px;
+}
+.saved-result-view .sv-quick-message {
+  color: #7a8fa8;
+  font-size: 16px;
+  font-weight: 800;
+}
+.saved-result-view .sv-quick-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #7a8fa8;
+  font-size: 13px;
+  font-weight: 700;
+}
+.saved-result-view .sv-quick-stats strong {
+  color: #263b57;
+  font-size: 16px;
+}
+.saved-result-view .sv-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 10px;
+}
+.saved-result-view .sv-section-heading::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: #dfe7f1;
+}
+.saved-result-view .sv-section-title {
+  color: #8da0ba;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.saved-result-view .sv-panel,
+.saved-result-view .sv-report {
+  background: #ffffff;
+  border: 1px solid #d9e3ef;
+  border-radius: 8px;
+}
+.saved-result-view .sv-files {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.saved-result-view .sv-files-col {
+  padding: 14px 18px;
+}
+.saved-result-view .sv-col-label {
+  color: #8da0ba;
+  font-size: 12px;
+  letter-spacing: .14em;
+  margin-bottom: 8px;
+}
+.saved-result-view .sv-file {
+  min-height: 42px;
+  padding: 8px 12px;
+  border-color: #d9e3ef;
+  background: #fbfdff;
+  border-radius: 0;
+}
+.saved-result-view .sv-file-primary {
+  background: #ffffff;
+  border-color: #cfdbea;
+}
+.saved-result-view .sv-file-name {
+  color: #17243a;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.saved-result-view .sv-file-type {
+  color: #7d91ab;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+.saved-result-view .sv-file-action {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #d8e2ee;
+  border-radius: 0;
+  background: #ffffff;
+  color: #243653;
+}
+.saved-result-view .sv-report {
+  padding: 12px 18px 16px;
+  margin-bottom: 16px;
+}
+.saved-result-view .sv-section-heading--compact {
+  margin-bottom: 10px;
+}
+.saved-result-view .sv-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 24px;
+}
+.saved-result-view .sv-report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 12px;
+  min-width: 0;
+  line-height: 1.4;
+}
+.saved-result-view .sv-report-row:last-child { border-bottom: none; }
+.saved-result-view .sv-report-row:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+.saved-result-view .sv-report-label {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  min-width: 0;
+}
+.saved-result-view .sv-report-value {
+  color: #1e2d45;
+  font-family: 'Fira Code', ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 400;
+  text-align: right;
+  word-break: break-word;
+  white-space: nowrap;
+  justify-self: end;
+}
+.saved-result-view .sv-detail-block {
+  margin-top: 24px;
+  padding-top: 0;
+}
+.saved-result-view .sv-detail-title {
+  color: #9aafc7;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.saved-result-view .sv-message-list,
+.saved-result-view .sv-workflow-flow {
+  display: grid;
+  gap: 6px;
+}
+.saved-result-view .sv-report .sv-workflow-flow {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #edf2f7;
+}
+.saved-result-view .sv-message,
+.saved-result-view .sv-workflow-step,
+.saved-result-view .sv-empty-result,
+.saved-result-view .sv-report-note {
+  border: 1px solid #e4ebf4;
+  border-radius: 0;
+  background: #fcfdff;
+  padding: 10px 12px;
+  color: #64758c;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+.saved-result-view .sv-message strong {
+  display: inline-block;
+  margin-right: 6px;
+  color: #5a6e88;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.saved-result-view .sv-message span {
+  color: #6a7d96;
+  font-weight: 400;
+}
+.saved-result-view .sv-report-note {
+  color: #9aafc7;
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 400;
+  background: transparent;
+  border: none;
+  padding: 6px 0 0;
+}
+.saved-result-view .sv-hit-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #dfe7f1;
+  border-radius: 0;
+}
+.saved-result-view .sv-hit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  background: #ffffff;
+}
+.saved-result-view .sv-hit-table th,
+.saved-result-view .sv-hit-table td {
+  padding: 9px 11px;
+  border-bottom: 1px solid #edf2f7;
+  text-align: left;
+}
+.saved-result-view .sv-hit-table th {
+  color: #8da0ba;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.saved-result-view .sv-hit-table td {
+  color: #263b57;
+}
+.saved-result-view .sv-hit-table td span {
+  display: block;
+  color: #8da0ba;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.saved-result-view .sv-workflow-step {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+}
+.saved-result-view .sv-workflow-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #edf3fa;
+  color: #345176;
+  font-size: 11px;
+  font-weight: 600;
+}
+.saved-result-view .sv-workflow-name {
+  color: #17243a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.saved-result-view .sv-workflow-meta {
+  color: #7d91ab;
+  font-size: 11.5px;
+}
+.saved-result-view .sv-workflow-status {
+  color: #2e7a52;
+  font-weight: 600;
+  font-size: 12px;
+}
+.saved-result-view .sv-workflow-step { align-items: start; }
+.saved-result-view .sv-workflow-num { margin-top: 2px; }
+.saved-result-view .sv-workflow-main { min-width: 0; }
+.saved-result-view .sv-step-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 5px;
+}
+.saved-result-view .sv-step-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #4a7ab8;
+  text-decoration: none;
+}
+.saved-result-view .sv-step-dl:hover { text-decoration: underline; }
+.saved-result-view .sv-step-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #7d91ab;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.saved-result-view .sv-step-preview-btn:hover { color: #4a7ab8; }
+.saved-result-view .sv-step-chev { transition: transform 0.15s; }
+.saved-result-view .sv-step-preview {
+  margin-top: 6px;
+  background: #f5f8fc;
+  border: 1px solid #dde7f3;
+  padding: 8px 10px;
+  border-radius: 3px;
+}
+.saved-result-view .sv-step-pre {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  white-space: pre;
+  overflow-x: auto;
+  margin: 0;
+  color: #2d3f58;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.saved-result-view .sv-next {
+  margin-bottom: 24px;
+}
+.saved-result-view .sv-next-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.saved-result-view .sv-next-card {
+  min-height: 52px;
+  padding: 10px 14px;
+  border-color: #d9e3ef;
+  border-radius: 0;
+}
+.saved-result-view .sv-next-icon {
+  width: 32px;
+  height: 32px;
+  background: #edf3fa;
+  color: #345176;
+}
+.saved-result-view .sv-next-title {
+  color: #17243a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.saved-result-view .sv-next-desc {
+  color: #6f839d;
+  font-size: 12px;
+}
+.saved-result-view .sv-preview {
+  border-color: #d9e3ef;
+  border-radius: 0;
+}
+
+</style>
+{% endblock %}

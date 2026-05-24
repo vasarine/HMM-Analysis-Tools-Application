@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Run Workflow – HMM Analysis Tools{% endblock %}
+
+{% block content %}
+{% include "_app_design.html" %}
+<div class="app-page hf-page">
+  <a href="{% url 'workflow_list' %}" class="app-back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Workflows
+  </a>
+  <h1 class="app-page-title" style="margin-bottom:6px !important;">{{ workflow.name }}</h1>
+  {% if workflow.description %}
+  <p style="color:#7a8fa8; font-size:13px; line-height:1.6; margin:0 0 22px 0;">{{ workflow.description }}</p>
+  {% endif %}
+
+  <div class="app-card" style="padding:16px 18px; margin-bottom:16px;">
+    <p style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin:0 0 10px 0;">Pipeline</p>
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      {% for step in workflow.steps.all %}
+        <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:99px; background:{{ step.color }}1a; color:{{ step.color }}; font-size:12px; font-weight:600; white-space:nowrap;">{{ step.label }}</span>
+        {% if not forloop.last %}
+          <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="app-card">
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      {% if error %}
+        <div class="notice err">
+          <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
+
+      <div class="app-field" style="margin-bottom:16px;">
+        <label for="id_run_name">Run name <span style="color:#94a3b8; font-weight:400;">(optional)</span></label>
+        <input type="text" name="run_name" id="id_run_name"
+               placeholder="e.g. My protein analysis"
+               style="width:100%; padding:9px 12px; border:1px solid #e2e8f0; border-radius:4px;
+                      font-size:14px; color:#2a2f3a; background:#ffffff; box-sizing:border-box;">
+      </div>
+
+      {% if not external_inputs %}
+        <p style="font-size:13px; color:#64748b;">This workflow has no external inputs to provide.</p>
+      {% endif %}
+
+      {% for ext in external_inputs %}
+      <div class="app-field" style="margin-bottom:18px;">
+        <label style="font-weight:600;">{{ ext.label }}</label>
+
+        {% if ext.data_type == 'HMM_PROFILE' %}
+          
+          <div class="hf-tab-toggle" data-toggle="hmm-{{ ext.role }}"
+               data-default-tab="{% if ext.kind == 'file' %}upload{% else %}library{% endif %}">
+            <button type="button" {% if ext.kind != 'file' %}class="active"{% endif %} data-pane="library">Search library</button>
+            <button type="button" {% if ext.kind == 'file' %}class="active"{% endif %} data-pane="upload">Upload .hmm file</button>
+          </div>
+          <div data-pane-content="library" {% if ext.kind == 'file' %}style="display:none;"{% endif %}>
+            <div class="autocomplete-container">
+              <input type="text" name="input__{{ ext.role }}"
+                     id="ac-{{ ext.role }}"
+                     placeholder="PF00069, IPR000001 or search by name"
+                     autocomplete="off"
+                     data-ac-role="{{ ext.role }}"
+                     style="width:100%; padding:9px 12px; border:1px solid #e2e8f0; border-radius:4px;
+                            font-size:14px; color:#2a2f3a; background:#ffffff; box-sizing:border-box;">
+              <div id="ac-drop-{{ ext.role }}" class="autocomplete-dropdown" style="display:none;"></div>
+            </div>
+            <small class="form-help">Pfam ID (PF00001), InterPro ID (IPR000001), or search by name (min. 3 chars).</small>
+          </div>
+          <div data-pane-content="upload" {% if ext.kind != 'file' %}style="display:none;"{% endif %}>
+            <label class="upload-zone" data-zone="hmm-{{ ext.role }}">
+              <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span class="upload-zone-text">Click to upload HMM profile</span>
+              <span class="upload-zone-hint">.hmm file</span>
+              <span class="upload-zone-filename"></span>
+              <input type="file" name="hmm_file__{{ ext.role }}" accept=".hmm">
+            </label>
+          </div>
+
+        {% else %}
+          <div class="hf-tab-toggle" data-toggle="{{ ext.role }}">
+            <button type="button" class="active" data-pane="upload">Upload file</button>
+            <button type="button" data-pane="paste">Paste sequences</button>
+          </div>
+          <div data-pane-content="upload">
+            <label class="upload-zone" data-zone="{{ ext.role }}">
+              <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span class="upload-zone-text">Click to upload or drag and drop</span>
+              <span class="upload-zone-hint">{{ ext.accept }}</span>
+              <span class="upload-zone-filename"></span>
+              <input type="file" name="input__{{ ext.role }}" accept="{{ ext.accept }}">
+            </label>
+          </div>
+          <div data-pane-content="paste" style="display:none;">
+            <textarea name="paste__{{ ext.role }}" class="hf-paste-area" rows="8"
+                      placeholder=">seq1&#10;MKTAYIAKQRQISFVKSHFSRQLEERLG..."></textarea>
+            <small class="form-help">Paste raw FASTA. Each entry must start with a &gt; header line.</small>
+          </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      <div style="margin-top:24px; padding-top:20px; border-top:1px solid #edf1f6;">
+        <button type="submit" class="app-btn-primary" style="display:inline-flex; align-items:center; gap:7px; width:auto; padding:10px 22px; margin-top:0;">
+          <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run workflow
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.hf-tab-toggle').forEach(toggle => {
+  toggle.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const which = btn.dataset.pane;
+      toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      const role = toggle.dataset.toggle;
+      const wrap = toggle.parentElement;
+      wrap.querySelectorAll('[data-pane-content]').forEach(p => {
+        p.style.display = p.dataset.paneContent === which ? '' : 'none';
+      });
+    });
+  });
+});
+
+document.querySelectorAll('.upload-zone').forEach(zone => {
+  const input = zone.querySelector('input[type=file]');
+  const fname = zone.querySelector('.upload-zone-filename');
+  if (!input) return;
+  input.addEventListener('change', function() {
+    const name = this.files[0]?.name || '';
+    if (fname) fname.textContent = name;
+    zone.classList.toggle('has-file', !!name);
+  });
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', e => { e.preventDefault(); zone.classList.remove('drag-over'); });
+  zone.addEventListener('drop', function(e) {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (!files.length) return;
+    const dt = new DataTransfer(); dt.items.add(files[0]);
+    input.files = dt.files;
+    if (fname) fname.textContent = files[0].name;
+    zone.classList.add('has-file');
+  });
+});
+
+(function() {
+  function detectSource(q) {
+    if (/^IPR/i.test(q)) return 'interpro';
+    return 'pfam';
+  }
+
+  function renderDrop(drop, results, input) {
+    if (!results.length) {
+      drop.innerHTML = '<div class="autocomplete-item" style="color:#94a3b8;">No results found</div>';
+    } else {
+      drop.innerHTML = results.map(r =>
+        `<div class="autocomplete-item" data-id="${r.id}">
+           <strong>${r.id}</strong> – ${r.name}
+           ${r.description ? `<div class="autocomplete-desc">${r.description}</div>` : ''}
+         </div>`
+      ).join('');
+      drop.querySelectorAll('.autocomplete-item[data-id]').forEach(item => {
+        item.addEventListener('mousedown', e => {
+          e.preventDefault();
+          input.value = item.dataset.id;
+          drop.style.display = 'none';
+        });
+      });
+    }
+    drop.style.display = 'block';
+  }
+
+  document.querySelectorAll('input[data-ac-role]').forEach(input => {
+    const drop = document.getElementById('ac-drop-' + input.dataset.acRole);
+    if (!drop) return;
+    let timer;
+
+    input.addEventListener('input', function() {
+      const q = this.value.trim();
+      clearTimeout(timer);
+      drop.style.display = 'none';
+      if (q.length < 3) return;
+      if (/^PF\d{5}$/i.test(q) || /^IPR\d{6}$/i.test(q)) return;
+      const src = detectSource(q);
+      timer = setTimeout(() => {
+        fetch(`/hmm-library/api/search/?source=${src}&q=${encodeURIComponent(q)}&limit=6`)
+          .then(r => r.json())
+          .then(d => { if (d.results?.length) renderDrop(drop, d.results, input); })
+          .catch(() => {});
+      }, 220);
+    });
+
+    input.addEventListener('blur', () => { setTimeout(() => { drop.style.display = 'none'; }, 150); });
+    input.addEventListener('focus', function() {
+      const q = this.value.trim();
+      if (q.length >= 3 && !/^PF\d{5}$/i.test(q) && !/^IPR\d{6}$/i.test(q))
+        input.dispatchEvent(new Event('input'));
+    });
+  });
+
+  document.addEventListener('click', e => {
+    document.querySelectorAll('.autocomplete-dropdown').forEach(d => {
+      if (!d.contains(e.target)) d.style.display = 'none';
+    });
+  });
+})();
+</script>
+{% endblock %}

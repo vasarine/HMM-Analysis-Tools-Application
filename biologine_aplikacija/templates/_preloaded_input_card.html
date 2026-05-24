@@ -1,0 +1,21 @@
+<div class="preloaded-input-card">
+  <div class="preloaded-input-icon" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-5"/></svg>
+  </div>
+  <div class="preloaded-input-content">
+    <div class="preloaded-input-title">{{ preloaded_title }}</div>
+    <div class="preloaded-input-text">{{ preloaded_text }}</div>
+    {% if preloaded_source_label %}
+      <div class="preloaded-input-meta">
+        <span>{{ preloaded_source_prefix }}</span>
+        <strong>{{ preloaded_source_label }}</strong>
+      </div>
+    {% endif %}
+    <div class="preloaded-input-next">Next: {{ preloaded_next }}</div>
+  </div>
+  {% if preloaded_dismiss_url_name %}
+    <a href="{% url preloaded_dismiss_url_name %}" class="preloaded-input-dismiss" title="Dismiss" aria-label="Dismiss preloaded input message">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </a>
+  {% endif %}
+</div>

@@ -1,0 +1,27 @@
+{% if user.is_authenticated %}
+<div class="ta-actions">
+  {% if retry_url %}
+    <a href="{{ retry_url }}" class="ta-btn ta-btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      {{ retry_label|default:"Try with other input" }}
+    </a>
+  {% endif %}
+  {% if back_url %}
+    <a href="{{ back_url }}" class="ta-btn">{{ back_label|default:"← Back" }}</a>
+  {% endif %}
+  {% if show_my_projects %}
+    <a href="{% url 'my-projects' %}{% if back_tool_param %}?tool={{ back_tool_param }}{% endif %}" class="ta-btn">My Projects</a>
+  {% endif %}
+  {% if not hide_delete and project_id and tool_type and project.user_id == user.id %}
+    <form method="post" action="{% url 'delete_project' project_id %}?tool={{ tool_type }}" class="ta-delete-form"
+          onsubmit="return confirm('Delete this project? This cannot be undone.');">
+      {% csrf_token %}
+      <input type="hidden" name="from_tool" value="{{ back_tool_param|default:'' }}">
+      <button type="submit" class="ta-btn ta-btn-delete">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Delete
+      </button>
+    </form>
+  {% endif %}
+</div>
+{% endif %}

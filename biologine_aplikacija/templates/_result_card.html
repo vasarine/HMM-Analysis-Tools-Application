@@ -1,0 +1,29 @@
+<div class="rc-card" id="rc-card-{{ card_id }}">
+  <div class="rc-head">
+    <div class="rc-head-left">
+      <button type="button" class="rc-toggle" aria-expanded="{% if start_open %}true{% else %}false{% endif %}"
+              data-target="rc-body-{{ card_id }}" onclick="rcToggle(this)">
+        {% if start_open %}<svg class="rc-chevron rc-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>{% else %}<svg class="rc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>{% endif %}
+      </button>
+      <div class="rc-titles">
+        <span class="rc-title">{{ result_title|default:"Output preview" }}</span>
+        {% if result_subtitle %}<span class="rc-subtitle">{{ result_subtitle }}</span>{% endif %}
+      </div>
+    </div>
+    {% if download_url %}
+    <a href="{{ download_url }}" class="rc-download">
+      <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      {{ download_label|default:"Download result" }}
+    </a>
+    {% endif %}
+  </div>
+  <div id="rc-body-{{ card_id }}" class="rc-body" {% if not start_open %}style="display:none;"{% endif %}>
+    <pre class="rc-pre {% if not no_clip %}rc-pre-clipped{% endif %}" data-card="{{ card_id }}">{{ result_pre }}</pre>
+    {% if not no_clip %}
+    <div class="rc-pre-foot">
+      <span class="rc-trunc-note">{{ truncated_note|default:"Preview is truncated. Download the full file to view all results." }}</span>
+      <button type="button" class="rc-expand-btn" data-card="{{ card_id }}" onclick="rcToggleFull(this)">Show full preview</button>
+    </div>
+    {% endif %}
+  </div>
+</div>

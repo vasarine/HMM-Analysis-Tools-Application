@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Format Converter – HMM Analysis Tools{% endblock %}
+
+{% block content %}
+{% include "_app_design.html" %}
+
+<div class="app-page">
+
+  {% if request.GET.from == 'my-projects' %}
+  <a href="{% url 'my-projects' %}?tool=preprocessing" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    My Projects
+  </a>
+  {% else %}
+  <a href="{% url 'home' %}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Home
+  </a>
+  {% endif %}
+
+  <div class="page-title">Format Converter</div>
+
+  <div class="form-card">
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if preloaded_source_id %}<input type="hidden" name="preloaded_source_id" value="{{ preloaded_source_id }}">{% endif %}
+      {% if preloaded_source_type %}<input type="hidden" name="preloaded_source_type" value="{{ preloaded_source_type }}">{% endif %}
+
+      {% if form.non_field_errors %}
+        {% for err in form.non_field_errors %}
+          <div class="notice err">
+            <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>{{ err }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if has_preloaded_alignment %}
+        {% include "_preloaded_input_card.html" with preloaded_title="Alignment input preloaded" preloaded_text=preloaded_alignment_text preloaded_source_prefix="Source project:" preloaded_source_label=preloaded_alignment_label preloaded_next="Choose the output format below, then run the conversion." preloaded_dismiss_url_name="format_convert_dismiss_preload" %}
+      {% endif %}
+
+      <div class="field">
+        <label class="field-label" for="{{ form.name.id_for_label }}">
+          Project Name <span class="field-optional">(optional)</span>
+        </label>
+        <input class="text-input" type="text" name="{{ form.name.html_name }}"
+               id="{{ form.name.id_for_label }}"
+               value="{{ form.name.value|default:'' }}"
+               placeholder="e.g. Globin alignment" maxlength="255">
+        {% if form.name.errors %}{% for e in form.name.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+      </div>
+
+      {% if not has_preloaded_alignment %}
+      <div class="field">
+        <label class="field-label">Input Alignment</label>
+        <div class="field-hint field-hint-inline">FASTA, Clustal (.aln), or Stockholm (.sto) - format is detected automatically.</div>
+        <div style="display:none;">{{ form.input_source }}</div>
+
+        <div class="tab-toggle" role="tablist">
+          <button type="button" id="tab-upload" class="active" onclick="appSwitchTab('upload')">Upload file</button>
+          <button type="button" id="tab-paste" onclick="appSwitchTab('paste')">Paste sequences</button>
+        </div>
+
+        <div id="pane-upload">
+          <label class="upload-zone" id="upload-zone-fc">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3a6096" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div class="cta">Click to upload or drag and drop</div>
+            <div class="formats">.fasta, .fa, .afa, .sto, .stk, .aln, .phy, .txt files</div>
+            <span class="filename" id="fc-filename"></span>
+            {{ form.input_file }}
+          </label>
+          {% if form.input_file.errors %}{% for e in form.input_file.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+        </div>
+
+        <div id="pane-paste" style="display:none">
+          <textarea class="paste-area" name="{{ form.pasted_text.html_name }}"
+                    id="{{ form.pasted_text.id_for_label }}"
+                    placeholder=">seq1&#10;MKTAYIA-KQRQ--ISFVKSHFSRQLEERLGLIE&#10;&#10;>seq2&#10;MKTLNGS-AFLI--VQQEYDLPLKKEPVI"
+                    spellcheck="false">{{ form.pasted_text.value|default:'' }}</textarea>
+          <div class="field-hint">Paste a FASTA, Clustal, or Stockholm alignment.</div>
+          {% if form.pasted_text.errors %}{% for e in form.pasted_text.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <hr class="section-divider">
+
+      <div class="field">
+        <div class="section-title">Output Format</div>
+        <div class="radio-seg" data-radio-group="output_format">
+          {% for choice in form.output_format %}
+            <label{% if choice.data.selected %} class="checked"{% endif %}>
+              {{ choice.tag }}<span class="dot"></span>{{ choice.choice_label }}
+            </label>
+          {% endfor %}
+        </div>
+        <div class="field-hint">Choose the alignment format you want to export to.</div>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Convert
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if project %}
+  
+  <div class="results-card" id="fc-results">
+    <div class="results-header">
+      <div class="results-title-wrap">
+        <span class="results-title">Run Report</span>
+        {% if project.name %}<span class="results-filename">{{ project.name }}</span>{% endif %}
+      </div>
+      <div class="results-actions-cluster">
+        {% if project.error_message %}
+          <span class="results-status err">✗ FAILED</span>
+        {% else %}
+          <span class="results-status ok">✓ COMPLETE</span>
+        {% endif %}
+        <button type="button" class="rr-icon-btn" onclick="rrToggleCard(this)" title="Collapse/expand">
+          <svg class="rr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="results-body">
+
+      {% if project.error_message %}
+      <div class="notice err">
+        <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span>{{ project.error_message }}</span>
+      </div>
+      {% else %}
+
+      <div class="report-summary">
+        <div class="comment"># Format Converter - output summary</div>
+        <div class="row"><span class="lbl">Input format</span><span class="val">{{ project.get_input_format_display }}</span></div>
+        <div class="row"><span class="lbl">Output format</span><span class="val">{{ project.get_output_format_display }}</span></div>
+        <div class="row"><span class="lbl">Sequences</span><span class="val">{{ project.sequence_count }}</span></div>
+        <div class="row"><span class="lbl">Alignment length</span><span class="val">{{ project.alignment_length }}</span><span class="note">columns</span></div>
+      </div>
+
+      <div class="result-actions">
+        {% if can_download_input %}
+        <a class="btn-secondary" href="{% url 'format_convert_input_download' project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download input alignment
+        </a>
+        {% endif %}
+        <a class="btn-download" href="{% url 'format_convert_download' project_id=project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download converted file
+        </a>
+        {% if project.output_format == 'stockholm' %}
+        <a href="{% url 'hmmbuild_form' %}?from_convert={{ project.id }}" class="btn-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          Build HMM profile
+        </a>
+        {% endif %}
+      </div>
+
+      {% endif %}
+    </div>
+  </div>
+
+  {% if output_preview %}
+    {% url 'format_convert_download' project_id=project.id as output_dl %}
+    {% include "_result_card.html" with card_id="fc-output" result_title=output_preview_title result_subtitle=output_preview_subtitle result_pre=output_preview download_url=output_dl download_label=output_download_label start_open=True truncated_note=output_preview_note %}
+  {% endif %}
+  {% endif %}
+
+</div>
+
+<script>
+  setupSimpleInputTabs();
+  document.addEventListener('DOMContentLoaded', function () {
+    setupUploadZone('upload-zone-fc', 'fc_input_file', 'fc-filename');
+    const results = document.getElementById('fc-results');
+    if (results) requestAnimationFrame(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  });
+</script>
+{% endblock %}

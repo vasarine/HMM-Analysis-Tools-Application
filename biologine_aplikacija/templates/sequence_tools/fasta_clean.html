@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block title %}Sequence Cleaner – HMM Analysis Tools{% endblock %}
+
+{% block content %}
+{% include "_app_design.html" %}
+<div class="app-page">
+
+  {% if view_only %}
+  <a href="{% url 'my-projects' %}?tool=preprocessing" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    My Projects
+  </a>
+  {% else %}
+  <a href="{% url 'home' %}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Home
+  </a>
+  {% endif %}
+
+  <div class="page-title">Sequence Cleaner</div>
+
+  {% if not view_only %}
+  <div class="form-card">
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if preloaded_source_id %}<input type="hidden" name="preloaded_source_id" value="{{ preloaded_source_id }}">{% endif %}
+
+      {% if form.non_field_errors %}
+        {% for err in form.non_field_errors %}<p class="form-error">{{ err }}</p>{% endfor %}
+      {% endif %}
+
+      {% if preloaded_fasta_label %}
+        {% include "_preloaded_input_card.html" with preloaded_title="FASTA input preloaded" preloaded_text="A validated FASTA file from FASTA Validator has been selected automatically." preloaded_source_prefix="Source project:" preloaded_source_label=preloaded_fasta_label preloaded_next="Choose cleaning options below, then run Sequence Cleaner." preloaded_dismiss_url_name="fasta_clean_dismiss_preload" %}
+      {% endif %}
+
+      <div class="field">
+        <label class="field-label" for="{{ form.name.id_for_label }}">
+          Project Name <span class="field-optional">(optional)</span>
+        </label>
+        <input class="text-input" type="text" name="{{ form.name.html_name }}"
+               id="{{ form.name.id_for_label }}"
+               value="{{ form.name.value|default:'' }}"
+               placeholder="e.g. Globin sequences" maxlength="255">
+        {% if form.name.errors %}{% for e in form.name.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+      </div>
+
+      {% if not has_preloaded_fasta %}
+      <div class="field">
+        <label class="field-label">Input Sequences</label>
+
+        <div style="display:none;">{{ form.input_source }}</div>
+
+        <div class="tab-toggle" role="tablist">
+          <button type="button" id="tab-upload" class="active" onclick="scSwitchTab('upload')">Upload file</button>
+          <button type="button" id="tab-paste" onclick="scSwitchTab('paste')">Paste sequences</button>
+        </div>
+
+        <div id="pane-upload">
+          <label class="upload-zone" id="upload-zone-clean">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3a6096" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div class="cta">Click to upload or drag and drop</div>
+            <div class="formats">.fasta, .fa, .fna, .faa, .ffn, .frn, .txt files</div>
+            <span class="filename" id="clean-filename"></span>
+            {{ form.fasta_file }}
+          </label>
+          {% if form.fasta_file.errors %}{% for e in form.fasta_file.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+        </div>
+
+        <div id="pane-paste" style="display:none">
+          <textarea class="paste-area" name="{{ form.pasted_text.html_name }}"
+                    id="{{ form.pasted_text.id_for_label }}"
+                    placeholder=">seq1&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSL&#10;&#10;>seq2&#10;ACGTTACGATCG"
+                    spellcheck="false">{{ form.pasted_text.value|default:'' }}</textarea>
+          <div class="field-hint">Paste raw FASTA content. Each entry should start with a &gt; header line.</div>
+          {% if form.pasted_text.errors %}{% for e in form.pasted_text.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <hr class="section-divider">
+
+      <div class="field">
+        <div class="section-title">Sequence Type</div>
+        <div class="radio-seg" data-radio-group="sequence_type">
+          {% for choice in form.sequence_type %}
+            <label{% if choice.data.selected %} class="checked"{% endif %}>
+              {{ choice.tag }}<span class="dot"></span>{{ choice.choice_label }}
+            </label>
+          {% endfor %}
+        </div>
+        <div class="field-hint">Auto-detect samples your sequences and chooses Protein or DNA. Override only if detection misclassifies your data.</div>
+      </div>
+
+      <div class="field">
+        <div class="section-title">Invalid Characters</div>
+        <div class="radio-seg" data-radio-group="invalid_char_strategy">
+          {% for choice in form.invalid_char_strategy %}
+            <label{% if choice.data.selected %} class="checked"{% endif %}>
+              {{ choice.tag }}<span class="dot"></span>{{ choice.choice_label }}
+            </label>
+          {% endfor %}
+        </div>
+        <div class="field-hint">What to do with characters outside the alphabet. <strong>Replace</strong> uses X (protein) or N (DNA). <strong>Remove</strong> drops them silently. <strong>Reject</strong> excludes the whole sequence.</div>
+      </div>
+
+      <hr class="section-divider">
+
+      <div class="field">
+        <div class="section-title">Normalization</div>
+        <div class="check-list">
+          <label class="check-row">
+            {{ form.uppercase }}
+            <div class="check-row-body">
+              <div class="check-row-name">Convert to uppercase</div>
+              <div class="check-row-desc">Converts atcg → ATCG. Most downstream tools expect uppercase sequences.</div>
+            </div>
+          </label>
+          <label class="check-row">
+            {{ form.remove_gaps }}
+            <div class="check-row-body">
+              <div class="check-row-name">Remove gap characters</div>
+              <div class="check-row-desc">Strips -, ., ~. Leave off if the input is a multiple sequence alignment - removing gaps breaks the alignment.</div>
+            </div>
+          </label>
+          <label class="check-row">
+            {{ form.remove_stop_chars }}
+            <div class="check-row-body">
+              <div class="check-row-name">Remove stop characters (*)</div>
+              <div class="check-row-desc">Strips * from protein sequences. Some tools choke on stop codons.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="section-title">Filtering</div>
+        <div class="check-list">
+          <label class="check-row">
+            {{ form.remove_duplicate_ids }}
+            <div class="check-row-body">
+              <div class="check-row-name">Fix duplicate names</div>
+              <div class="check-row-desc">If two sequences share a name: removes the second if content is identical, otherwise renames it (seq1, seq1_2).</div>
+            </div>
+          </label>
+          <label class="check-row">
+            {{ form.remove_duplicate_seqs }}
+            <div class="check-row-body">
+              <div class="check-row-name">Remove identical sequences</div>
+              <div class="check-row-desc">Drops sequences with identical content regardless of ID.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="section-title">Length Filter</div>
+        <div class="length-row">
+          <span class="length-label">Min</span>
+          <input class="length-input" type="number" min="1"
+                 name="{{ form.min_length.html_name }}"
+                 id="{{ form.min_length.id_for_label }}"
+                 value="{{ form.min_length.value|default:'' }}"
+                 placeholder="e.g. 50">
+          <span class="length-sep">-</span>
+          <span class="length-label">Max</span>
+          <input class="length-input" type="number" min="1"
+                 name="{{ form.max_length.html_name }}"
+                 id="{{ form.max_length.id_for_label }}"
+                 value="{{ form.max_length.value|default:'' }}"
+                 placeholder="e.g. 5000">
+          <span class="length-unit">residues</span>
+        </div>
+        {% if form.min_length.errors %}{% for e in form.min_length.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+        {% if form.max_length.errors %}{% for e in form.max_length.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+        <div class="field-hint" style="margin-top:6px">Leave blank to keep all sizes.</div>
+      </div>
+
+      <div class="field">
+        <div class="section-title">Quality Filter</div>
+        <div class="length-row">
+          <span class="length-label">Max ambiguity</span>
+          <input class="length-input" type="number" min="0" max="100"
+                 name="{{ form.max_ambiguity_percent.html_name }}"
+                 id="{{ form.max_ambiguity_percent.id_for_label }}"
+                 value="{{ form.max_ambiguity_percent.value|default:'' }}"
+                 placeholder="e.g. 20">
+          <span class="length-unit">% N or X</span>
+        </div>
+        {% if form.max_ambiguity_percent.errors %}{% for e in form.max_ambiguity_percent.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+        <div class="field-hint" style="margin-top:6px">Drop sequences with too many ambiguous letters (N for DNA/RNA, X for protein). Leave blank to keep all.</div>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Clean Sequences
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if stats %}
+  <div class="results-card" id="sc-results">
+    <div class="results-header">
+      <div class="results-title-wrap">
+        <span class="results-title">Run Report</span>
+        {% if filename %}<span class="results-filename">{{ filename }}</span>{% endif %}
+      </div>
+      <div class="results-actions-cluster">
+        {% if stats.errors %}
+          <span class="results-status err">✗ FAILED</span>
+        {% elif stats.final_count == 0 %}
+          <span class="results-status warn">⚠ NO OUTPUT</span>
+        {% else %}
+          <span class="results-status ok">✓ COMPLETE</span>
+        {% endif %}
+        <button type="button" class="rr-icon-btn" onclick="rrToggleCard(this)" title="Collapse/expand">
+          <svg class="rr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="results-body">
+
+      {% for note in stats.notices %}
+      <div class="notice">
+        <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>{{ note }}</span>
+      </div>
+      {% endfor %}
+
+      <div class="report-summary">
+        <div class="comment"># Sequence Cleaner - output summary</div>
+        {% if filename %}
+        <div class="row"><span class="lbl">Input file</span><span class="val">{{ filename }}</span></div>
+        {% endif %}
+        {% if stats.detected_alphabet %}
+        <div class="row">
+          <span class="lbl">Detected alphabet</span>
+          <span class="val">{{ stats.detected_alphabet|upper }}</span>
+          {% if stats.alphabet_was_autodetected %}
+            <span class="note">(auto-detected, confidence {{ stats.alphabet_confidence|floatformat:0 }}%)</span>
+          {% else %}
+            <span class="note">(user-specified)</span>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="row"><span class="lbl">Sequences in</span><span class="val">{{ stats.original_count }}</span></div>
+        <div class="row"><span class="lbl">Sequences out</span><span class="val">{{ stats.final_count }}</span></div>
+        <div class="row">
+          <span class="lbl">Sequences modified</span>
+          <span class="val">{{ stats.modified_count|default:0 }}</span>
+          {% with mods="" %}
+          {% if stats.modified_invalid_replaced %}<span class="note">(invalid characters replaced with X/N)</span>
+          {% elif stats.modified_invalid_removed %}<span class="note">(invalid characters removed)</span>
+          {% elif stats.modified_uppercase or stats.modified_gaps_stripped or stats.modified_stops_stripped %}<span class="note">(normalized)</span>
+          {% endif %}
+          {% endwith %}
+        </div>
+        <div class="row">
+          <span class="lbl">Sequences removed</span>
+          {% with total=stats.removed_empty|add:stats.removed_min_length|add:stats.removed_max_length|add:stats.removed_dup_ids|add:stats.removed_dup_seqs|add:stats.removed_invalid_chars|add:stats.removed_high_ambiguity %}
+          <span class="val">{{ total|default:0 }}</span>
+          {% endwith %}
+        </div>
+      </div>
+
+      {% if stats.preview %}
+      <div class="detail-title">Cleaned output preview</div>
+      <div class="preview-block">
+        {% for p in stats.preview %}
+        <div class="header">&gt;{{ p.id }}<span class="meta">({{ p.length }} {% if stats.detected_alphabet == 'protein' %}aa{% else %}nt{% endif %})</span></div>
+        <div class="seq">{{ p.seq }}{% if p.truncated %}<span class="ellipsis">…</span>{% endif %}</div>
+        {% endfor %}
+        {% if stats.preview_remaining %}
+        <div class="more">…and {{ stats.preview_remaining }} more sequence{{ stats.preview_remaining|pluralize }} in the downloaded file</div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if stats.warnings %}
+      <div class="detail-title">Per-sequence detail</div>
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th style="width:22%">ID</th>
+            <th style="width:20%">Status</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in stats.warnings %}
+          <tr>
+            <td class="id">{{ w.id }}</td>
+            <td class="status-mod">Modified</td>
+            <td class="notes">{{ w.invalid_count }} invalid residues ({{ w.invalid_ratio|floatformat:1 }}% of sequence)</td>
+          </tr>
+          {% endfor %}
+          {% if stats.warnings_truncated %}
+          <tr>
+            <td colspan="3" class="notes-muted" style="font-style:italic">…and {{ stats.warnings_truncated }} more</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% with total=stats.removed_empty|add:stats.removed_min_length|add:stats.removed_max_length|add:stats.removed_dup_ids|add:stats.removed_dup_seqs|add:stats.removed_invalid_chars|add:stats.removed_high_ambiguity %}
+      {% if total %}
+      <div class="detail-title">Removal breakdown</div>
+      <ul class="removal-list">
+        {% if stats.removed_invalid_chars %}<li>{{ stats.removed_invalid_chars }} sequence{{ stats.removed_invalid_chars|pluralize }} rejected (invalid characters)</li>{% endif %}
+        {% if stats.removed_empty %}<li>{{ stats.removed_empty }} sequence{{ stats.removed_empty|pluralize }} became empty after cleaning</li>{% endif %}
+        {% if stats.removed_dup_ids %}<li>{{ stats.removed_dup_ids }} duplicate ID{{ stats.removed_dup_ids|pluralize }} removed</li>{% endif %}
+        {% if stats.removed_dup_seqs %}<li>{{ stats.removed_dup_seqs }} identical sequence{{ stats.removed_dup_seqs|pluralize }} removed</li>{% endif %}
+        {% if stats.removed_min_length %}<li>{{ stats.removed_min_length }} sequence{{ stats.removed_min_length|pluralize }} below minimum length</li>{% endif %}
+        {% if stats.removed_max_length %}<li>{{ stats.removed_max_length }} sequence{{ stats.removed_max_length|pluralize }} above maximum length</li>{% endif %}
+        {% if stats.removed_high_ambiguity %}<li>{{ stats.removed_high_ambiguity }} sequence{{ stats.removed_high_ambiguity|pluralize }} above ambiguity threshold (N/X content)</li>{% endif %}
+      </ul>
+      {% endif %}
+      {% endwith %}
+
+      {% if stats.errors %}
+        {% for err in stats.errors %}
+        <div class="result-note" style="background:#fdecec;border-color:#e8a8a8;color:#9b3636">{{ err }}</div>
+        {% endfor %}
+      {% endif %}
+
+      {% if has_output and project %}
+      <div class="result-actions">
+        {% if can_download_input %}
+        <a class="btn-secondary" href="{% url 'fasta_clean_input_download' project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download input FASTA
+        </a>
+        {% endif %}
+        <a class="btn-download" href="{% url 'fasta_clean_download' project.id %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download cleaned FASTA
+        </a>
+        <a class="btn-secondary" href="{% url 'clustalo_form' %}?from_clean={{ project.id }}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Align with MSA
+        </a>
+      </div>
+      {% elif not stats.errors %}
+      <div class="result-note">All sequences were removed by the selected filters - nothing to download.</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function scSwitchTab(tab) {
+  var u = document.getElementById('pane-upload');
+  var p = document.getElementById('pane-paste');
+  var tu = document.getElementById('tab-upload');
+  var tp = document.getElementById('tab-paste');
+  if (u) u.style.display = tab === 'upload' ? 'block' : 'none';
+  if (p) p.style.display  = tab === 'paste'  ? 'block' : 'none';
+  if (tu) tu.classList.toggle('active', tab === 'upload');
+  if (tp) tp.classList.toggle('active',  tab === 'paste');
+  document.querySelectorAll('input[type="radio"][name="input_source"]').forEach(function(r) {
+    r.checked = (r.value === tab);
+  });
+}
+
+(function() {
+  if (!document.getElementById('pane-upload')) return;
+  const checked = document.querySelector('input[type="radio"][name="input_source"]:checked');
+  if (checked && checked.value === 'paste') scSwitchTab('paste'); else scSwitchTab('upload');
+})();
+
+(function() {
+  const zone = document.getElementById('upload-zone-clean');
+  const input = document.getElementById('sc_fasta_file');
+  const filenameEl = document.getElementById('clean-filename');
+  if (!zone || !input) return;
+
+  input.addEventListener('change', function() {
+    const name = this.files[0]?.name || '';
+    if (filenameEl) filenameEl.textContent = name;
+  });
+
+  zone.addEventListener('dragover', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+  });
+  zone.addEventListener('drop', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    zone.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (!files.length) return;
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    input.files = dt.files;
+    if (filenameEl) filenameEl.textContent = files[0].name;
+  });
+})();
+
+document.querySelectorAll('.app-page .radio-seg').forEach(function(group) {
+  const labels = group.querySelectorAll('label');
+  labels.forEach(function(label) {
+    const radio = label.querySelector('input[type="radio"]');
+    if (!radio) return;
+    label.addEventListener('click', function(e) {
+      setTimeout(function() {
+        labels.forEach(l => l.classList.remove('checked'));
+        if (radio.checked) label.classList.add('checked');
+      }, 0);
+    });
+  });
+});
+
+(function() {
+  const results = document.getElementById('sc-results');
+  if (results) {
+    requestAnimationFrame(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+})();
+</script>
+{% endblock %}

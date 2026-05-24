@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="app-page hf-page sp-page">
+
+  <a href="{% url 'my-projects' %}?tool={{ tool }}" class="app-back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to My Projects
+  </a>
+
+  <h1 class="app-page-title">Share project</h1>
+  <p class="sp-page-sub">Control who can see this project and copy a link to share it.</p>
+
+  <form method="post" class="app-card sp-card">
+    {% csrf_token %}
+
+    
+    <section class="sp-section">
+      <div class="sp-section-head">
+        <span class="sp-eyebrow">Visibility</span>
+        <span class="sp-eyebrow-sub">Choose who can access this project.</span>
+      </div>
+
+      <div class="sp-radio-group">
+        {% for radio in form.visibility %}
+        <label class="sp-radio-card {% if radio.data.value == form.visibility.value %}is-selected{% endif %}"
+               data-value="{{ radio.data.value }}">
+          <span class="sp-radio-dot"></span>
+          <span class="sp-radio-body">
+            <span class="sp-radio-title">{{ radio.choice_label }}</span>
+            <span class="sp-radio-desc">
+              {% if radio.data.value == 'private' %}Only you can view this project.{% endif %}
+              {% if radio.data.value == 'link' %}Anyone with the link can view this project.{% endif %}
+              {% if radio.data.value == 'public' %}Listed publicly and visible to everyone.{% endif %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="sp-radio-inputs" aria-hidden="true">
+        {% for radio in form.visibility %}{{ radio.tag }}{% endfor %}
+      </div>
+    </section>
+
+    
+    <section class="sp-section sp-files-section" id="sp-files-section">
+      <div class="sp-section-head">
+        <span class="sp-eyebrow">Files visible to viewers</span>
+        <span class="sp-eyebrow-sub">Applies when visibility is set to <em>Link</em>, <em>Public</em>, or <em>Shared</em>. Ignored when project is private.</span>
+      </div>
+
+      <div class="sp-checkbox-group">
+        <label class="sp-checkbox-card">
+          <span class="sp-cb-check">
+            {{ form.share_outputs }}
+          </span>
+          <span class="sp-cb-body">
+            <span class="sp-cb-title">Output / result files</span>
+            <span class="sp-cb-desc">Generated analysis results such as HMM profiles, search outputs, alignments or cleaned files.</span>
+          </span>
+        </label>
+
+        <label class="sp-checkbox-card">
+          <span class="sp-cb-check">
+            {{ form.share_inputs }}
+          </span>
+          <span class="sp-cb-body">
+            <span class="sp-cb-title">Input files</span>
+            <span class="sp-cb-desc">
+              Input files may contain original biological sequence data. Share them only if you are sure these data can be visible to others.
+            </span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    
+    <section class="sp-section">
+      <div class="sp-section-head">
+        <span class="sp-eyebrow">Share link</span>
+        <span class="sp-eyebrow-sub">Works only when visibility is set to <em>Link</em> or <em>Public</em>.</span>
+      </div>
+      <div class="sp-input-row">
+        <input type="text" id="share-link" value="{{ share_link }}" readonly class="sp-input sp-input-mono">
+        <button type="button" onclick="copyShareLink()" class="app-btn-secondary sp-btn-row" id="copy-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+    </section>
+
+    
+    <section class="sp-section">
+      <div class="sp-section-head">
+        <span class="sp-eyebrow">Share with people</span>
+        <span class="sp-eyebrow-sub">Invite a registered user by their email address.</span>
+      </div>
+      <div class="sp-input-row">
+        <input type="email" id="email-to-share" placeholder="user@example.com" class="sp-input">
+        <button type="button" onclick="addUserByEmail()" class="app-btn-primary sp-btn-row">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+      </div>
+      <div id="error-message" class="sp-error" style="display:none;"></div>
+
+      {% if shared_users %}
+      <div class="shared-users-list sp-users">
+        {% for user in shared_users %}
+        <div class="shared-user-item sp-user" data-user-id="{{ user.id }}">
+          <div class="sp-user-avatar">{{ user.username|slice:":1"|upper }}</div>
+          <div class="sp-user-meta">
+            <div class="sp-user-email">{{ user.email }}</div>
+            <div class="sp-user-name">{{ user.username }}</div>
+          </div>
+          <button type="button" onclick="removeUser({{ user.id }})" class="sp-user-remove" title="Remove">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="sp-users-empty">No people added yet.</div>
+      {% endif %}
+    </section>
+
+    
+    <div class="sp-footer">
+      <a href="{% url 'my-projects' %}?tool={{ tool }}" class="sp-cancel">Cancel</a>
+      <button type="submit" class="app-btn-primary sp-btn-save">
+        Save changes
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+.sp-page { max-width: 820px; margin: 0 auto; padding: 0 0 80px 0; }
+
+.sp-page-sub {
+  font-size: 13px; color: #7a8fa8;
+  margin: -14px 0 22px 0;
+  line-height: 1.5;
+  max-width: 600px;
+}
+
+.sp-page .sp-card { display: flex; flex-direction: column; gap: 24px; }
+
+.sp-section { display: flex; flex-direction: column; gap: 10px; }
+.sp-section + .sp-section { padding-top: 24px; border-top: 1px solid #f1f5f9; }
+.sp-section-head { display: flex; flex-direction: column; gap: 3px; }
+.sp-eyebrow {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: #94a3b8;
+}
+.sp-eyebrow-sub { font-size: 12.5px; color: #7a8fa8; line-height: 1.5; }
+.sp-eyebrow-sub em { color: #1e2d45; font-style: normal; font-weight: 600; }
+
+.sp-radio-group { display: flex; flex-direction: column; gap: 8px; }
+.sp-radio-inputs { display: none; }
+.sp-radio-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0;
+  cursor: pointer; user-select: none;
+  transition: border-color .12s, background .12s;
+}
+.sp-radio-card:hover { border-color: #c8d4e0; background: #fafbfd; }
+.sp-radio-card.is-selected {
+  border-color: #4a6396;
+  background: #f4f7fb;
+  box-shadow: 0 0 0 3px rgba(74,99,150,.08);
+}
+.sp-radio-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid #c8d4e0;
+  flex-shrink: 0; margin-top: 1px;
+  background: #ffffff;
+  transition: border-color .12s, background .12s;
+}
+.sp-radio-card.is-selected .sp-radio-dot {
+  border-color: #4a6396;
+  background: #4a6396;
+  box-shadow: inset 0 0 0 3px #ffffff;
+}
+.sp-radio-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sp-radio-title { font-size: 13.5px; font-weight: 600; color: #1e2d45; }
+.sp-radio-desc { font-size: 12.5px; color: #7a8fa8; line-height: 1.5; }
+
+.sp-input-row { display: flex; align-items: stretch; gap: 8px; }
+.sp-input {
+  flex: 1;
+  height: 36px; padding: 0 12px; box-sizing: border-box;
+  background: #ffffff;
+  border: 1.5px solid #c8d4e0;
+  border-radius: 6px;
+  font-size: 13px; color: #1e2d45;
+  outline: none;
+  transition: border-color .12s, box-shadow .12s;
+  font-family: inherit;
+}
+.sp-input::placeholder { color: #94a3b8; }
+.sp-input:focus {
+  border-color: #6b8cba;
+  box-shadow: 0 0 0 3px rgba(107,140,186,.15);
+}
+.sp-input-mono {
+  color: #3a4a60;
+  background: #f8fafc;
+  letter-spacing: -0.1px;
+}
+
+.sp-page .sp-btn-row {
+  height: 36px;
+  padding: 0 16px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  margin-top: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  width: auto !important;
+}
+.sp-page .sp-btn-row.app-btn-secondary { padding: 0 14px !important; }
+.sp-page .sp-btn-row.app-btn-secondary.is-success {
+  background: #eef7f2; color: #2e7a52; border-color: #b6dcc6;
+}
+
+.sp-users { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.sp-user {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: border-color .12s;
+}
+.sp-user:hover { border-color: #c8d4e0; }
+.sp-user-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b7ab8, #3b4f7a);
+  color: #ffffff;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sp-user-meta { flex: 1; min-width: 0; }
+.sp-user-email {
+  font-size: 13px; font-weight: 500; color: #1e2d45;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sp-user-name { font-size: 11.5px; color: #7a8fa8; margin-top: 1px; }
+.sp-user-remove {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.sp-user-remove:hover {
+  background: rgba(184,92,92,.08);
+  color: #b85c5c;
+  border-color: rgba(184,92,92,.25);
+}
+.sp-users-empty {
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px dashed #e2e8f0;
+  border-radius: 6px;
+  font-size: 12.5px; color: #94a3b8;
+  text-align: center;
+}
+
+.sp-checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+.sp-checkbox-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0;
+  cursor: pointer; user-select: none;
+  transition: border-color .12s, background .12s, opacity .12s;
+}
+.sp-checkbox-card:hover { border-color: #c8d4e0; background: #fafbfd; }
+.sp-cb-check {
+  display: flex; align-items: flex-start; padding-top: 2px; flex-shrink: 0;
+}
+.sp-cb-check input[type="checkbox"] {
+  width: 16px; height: 16px; margin: 0;
+  accent-color: #4a6396;
+  cursor: pointer;
+}
+.sp-cb-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sp-cb-title { font-size: 13.5px; font-weight: 600; color: #1e2d45; }
+.sp-cb-desc { font-size: 12.5px; color: #7a8fa8; line-height: 1.5; }
+.sp-files-section.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.sp-error {
+  font-size: 12.5px; color: #b85c5c;
+  background: #fdf4f4;
+  border: 1px solid rgba(184,92,92,.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-top: 4px;
+}
+
+.sp-footer {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 12px;
+  padding-top: 22px;
+  border-top: 1px solid #f1f5f9;
+}
+.sp-cancel {
+  font-size: 13px; color: #7a8fa8;
+  text-decoration: none;
+  padding: 8px 4px;
+  transition: color .12s;
+}
+.sp-cancel:hover { color: #1e2d45; }
+.sp-page .sp-btn-save {
+  min-width: 140px;
+  justify-content: center;
+  margin-top: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  width: auto !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const cards = document.querySelectorAll('.sp-radio-card');
+  const hiddenInputs = document.querySelectorAll('.sp-radio-inputs input[type="radio"]');
+  const filesSection = document.getElementById('sp-files-section');
+
+  function updateFilesSection() {
+    const selected = document.querySelector('.sp-radio-card.is-selected');
+    const val = selected ? selected.dataset.value : 'private';
+    if (filesSection) {
+      if (val === 'private') {
+        filesSection.classList.add('is-disabled');
+      } else {
+        filesSection.classList.remove('is-disabled');
+      }
+    }
+  }
+
+  cards.forEach(function (card, index) {
+    card.addEventListener('click', function () {
+      cards.forEach(c => c.classList.remove('is-selected'));
+      card.classList.add('is-selected');
+      if (hiddenInputs[index]) hiddenInputs[index].checked = true;
+      updateFilesSection();
+    });
+  });
+
+  updateFilesSection();
+});
+
+function copyShareLink() {
+  const shareLink = document.getElementById('share-link');
+  const btn = document.getElementById('copy-btn');
+  shareLink.select();
+  shareLink.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(shareLink.value).then(() => {
+    const originalHTML = btn.innerHTML;
+    btn.classList.add('is-success');
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied';
+    setTimeout(() => {
+      btn.classList.remove('is-success');
+      btn.innerHTML = originalHTML;
+    }, 2000);
+  });
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+function addUserByEmail() {
+  const emailInput = document.getElementById('email-to-share');
+  const email = emailInput.value.trim();
+  const errorMsg = document.getElementById('error-message');
+
+  if (!email) {
+    errorMsg.textContent = 'Please enter an email address';
+    errorMsg.style.display = 'block';
+    return;
+  }
+  errorMsg.style.display = 'none';
+
+  const csrftoken = getCookie('csrftoken');
+  const formData = new FormData();
+  formData.append('email', email);
+  formData.append('action', 'add');
+
+  fetch(window.location.href, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
+    body: formData,
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      let sharedList = document.querySelector('.shared-users-list');
+      const empty = document.querySelector('.sp-users-empty');
+      if (empty) empty.remove();
+      if (!sharedList) {
+        sharedList = document.createElement('div');
+        sharedList.className = 'shared-users-list sp-users';
+        emailInput.closest('.sp-section').appendChild(sharedList);
+      }
+      const item = document.createElement('div');
+      item.className = 'shared-user-item sp-user';
+      item.dataset.userId = data.user.id;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'sp-user-avatar';
+      avatar.textContent = (data.user.username || '?').charAt(0).toUpperCase();
+
+      const meta = document.createElement('div');
+      meta.className = 'sp-user-meta';
+      const emailDiv = document.createElement('div');
+      emailDiv.className = 'sp-user-email';
+      emailDiv.textContent = data.user.email;
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'sp-user-name';
+      nameDiv.textContent = data.user.username;
+      meta.appendChild(emailDiv);
+      meta.appendChild(nameDiv);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'sp-user-remove';
+      removeBtn.title = 'Remove';
+      removeBtn.addEventListener('click', function () { removeUser(data.user.id); });
+      removeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+      item.appendChild(avatar);
+      item.appendChild(meta);
+      item.appendChild(removeBtn);
+      sharedList.appendChild(item);
+      emailInput.value = '';
+      errorMsg.style.display = 'none';
+    } else {
+      errorMsg.textContent = data.error;
+      errorMsg.style.display = 'block';
+    }
+  })
+  .catch(() => {
+    errorMsg.textContent = 'An error occurred. Please try again.';
+    errorMsg.style.display = 'block';
+  });
+}
+
+function removeUser(userId) {
+  if (!confirm('Remove this user from shared list?')) return;
+  const csrftoken = getCookie('csrftoken');
+  const formData = new FormData();
+  formData.append('user_id', userId);
+  formData.append('action', 'remove');
+
+  fetch(window.location.href, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest' },
+    body: formData,
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      const userItem = document.querySelector(`.sp-user[data-user-id="${userId}"]`);
+      if (userItem) {
+        const sharedList = userItem.closest('.shared-users-list');
+        userItem.remove();
+        if (sharedList && sharedList.querySelectorAll('.sp-user').length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'sp-users-empty';
+          empty.textContent = 'No people added yet.';
+          sharedList.replaceWith(empty);
+        }
+      }
+    } else {
+      alert('Error removing user: ' + data.error);
+    }
+  })
+  .catch(() => alert('An error occurred. Please try again.'));
+}
+
+document.getElementById('email-to-share')?.addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addUserByEmail(); }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "_app_design.html" %}
+<div class="app-page hf-page">
+
+  <a href="{% url 'home' %}" class="app-back-link">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Home
+  </a>
+
+  <h1 class="app-page-title tool-title">HMMBUILD</h1>
+
+  <div class="app-card">
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if preloaded_source_id %}<input type="hidden" name="preloaded_source_id" value="{{ preloaded_source_id }}">{% endif %}
+      {% if preloaded_source_type %}<input type="hidden" name="preloaded_source_type" value="{{ preloaded_source_type }}">{% endif %}
+
+      {% if form and form.non_field_errors %}
+        {% for err in form.non_field_errors %}
+          <div class="notice err">
+            <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>{{ err }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if preloaded_msa_label %}
+        {% include "_preloaded_input_card.html" with preloaded_title="Alignment input preloaded" preloaded_text=preloaded_msa_text preloaded_source_prefix="Source project:" preloaded_source_label=preloaded_msa_label preloaded_next="Review the options below, then build the HMM profile." preloaded_dismiss_url_name="hmmbuild_dismiss_preload" %}
+      {% endif %}
+
+      <div class="app-field">
+        <label for="{{ form.name.id_for_label }}">Project Name <span class="hf-optional">(optional)</span></label>
+        {{ form.name }}
+        {% if form and form.name.errors %}
+          {% for err in form.name.errors %}
+            <p class="form-error">{{ err }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+      <hr class="hf-divider">
+
+      {% if not has_preloaded_msa %}
+      <div class="app-field">
+        <label>Multiple Sequence Alignment</label>
+        <p class="app-field-help">Provide a Stockholm, FASTA, or Clustal format alignment</p>
+
+        <div style="display:none;">{{ form.input_source }}</div>
+
+        <div class="hf-tab-toggle">
+          <button type="button" id="msa-tab-upload" class="active" onclick="hbSwitchMsaTab('upload')">Upload file</button>
+          <button type="button" id="msa-tab-paste" onclick="hbSwitchMsaTab('paste')">Paste alignment</button>
+        </div>
+
+        <div id="msa-pane-upload">
+          <label class="upload-zone" id="upload-zone-msa">
+            <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="upload-zone-text">Click to upload or drag and drop</span>
+            <span class="upload-zone-hint">.sto, .stk, .aln, .phy, .fa, .fasta, .afa, .a2m files</span>
+            <span class="upload-zone-filename" id="msa-filename"></span>
+            {{ form.msa_file }}
+          </label>
+          {% if form and form.msa_file.errors %}
+            {% for err in form.msa_file.errors %}
+              <p class="form-error">{{ err }}</p>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <div id="msa-pane-paste" style="display:none">
+          <textarea class="hf-paste-area" name="{{ form.pasted_text.html_name }}"
+                    id="{{ form.pasted_text.id_for_label }}"
+                    placeholder="# STOCKHOLM 1.0&#10;seq1  MKVLWAALLVTFLAGCQA&#10;seq2  MKVLWAALV-TFLAGCQA&#10;//"
+                    spellcheck="false" rows="10">{{ form.pasted_text.value|default:'' }}</textarea>
+          <small class="form-help">Paste a Stockholm, Clustal, or aligned FASTA alignment. Each sequence must have the same length.</small>
+          {% if form and form.pasted_text.errors %}
+            {% for err in form.pasted_text.errors %}
+              <p class="form-error">{{ err }}</p>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if error %}
+        <p class="form-error">{{ error|safe }}</p>
+      {% endif %}
+
+      <hr class="hf-divider">
+      <div class="app-field" style="display:flex;gap:8px;align-items:flex-start;">
+        {{ form.save_annotated_msa }}
+        <div>
+          <label for="{{ form.save_annotated_msa.id_for_label }}" style="font-weight:600;cursor:pointer;">
+            {{ form.save_annotated_msa.label }}
+          </label>
+          {% if form.save_annotated_msa.help_text %}
+            <div style="font-size:12px;color:#6b7280;margin-top:2px;">{{ form.save_annotated_msa.help_text }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <hr class="section-divider">
+      {% include "_additional_parameters.html" %}
+
+      <div class="hf-submit-row">
+        <button type="submit" class="app-btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Build HMM Profile
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+<script>
+function hbSwitchMsaTab(tab) {
+  var u = document.getElementById('msa-pane-upload');
+  var p = document.getElementById('msa-pane-paste');
+  var tu = document.getElementById('msa-tab-upload');
+  var tp = document.getElementById('msa-tab-paste');
+  if (u) u.style.display = tab === 'upload' ? 'block' : 'none';
+  if (p) p.style.display  = tab === 'paste'  ? 'block' : 'none';
+  if (tu) tu.classList.toggle('active', tab === 'upload');
+  if (tp) tp.classList.toggle('active',  tab === 'paste');
+  document.querySelectorAll('input[type="radio"][name="input_source"]').forEach(function(r) {
+    r.checked = (r.value === tab);
+  });
+}
+
+(function() {
+  if (!document.getElementById('msa-pane-upload')) return;
+  var checked = document.querySelector('input[type="radio"][name="input_source"]:checked');
+  if (checked && checked.value === 'paste') hbSwitchMsaTab('paste'); else hbSwitchMsaTab('upload');
+})();
+
+document.addEventListener('DOMContentLoaded', function () {
+  setupUploadZone('upload-zone-msa', 'msa_file', 'msa-filename');
+});
+</script>
+{% endblock %}

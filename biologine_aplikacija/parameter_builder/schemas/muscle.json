@@ -1,0 +1,72 @@
+{
+  "tool_id": "muscle",
+  "display_name": "MUSCLE",
+  "executable": "muscle",
+  "fixed_args": [],
+  "supported_output_formats": ["fasta"],
+  "parameters": [
+    {
+      "name": "super5",
+      "label": "Super5 algorithm (-super5)",
+      "section": "Basic",
+      "flag": "-super5",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Faster algorithm for large datasets (>1000 sequences)."
+    },
+    {
+      "name": "threads",
+      "label": "Threads (-threads)",
+      "section": "Basic",
+      "flag": "-threads",
+      "type": "number",
+      "default": 1,
+      "min": 1,
+      "max": 16,
+      "help_text": "Number of CPU cores to use."
+    },
+    {
+      "name": "perm",
+      "label": "Guide tree permutation (-perm)",
+      "section": "Advanced",
+      "flag": "-perm",
+      "type": "select",
+      "default": "none",
+      "options": ["none", "abc", "acb", "bca"],
+      "help_text": "Permute the guide tree before alignment. Changes the alignment outcome; useful for sensitivity analysis."
+    },
+    {
+      "name": "perturb",
+      "label": "Perturbation seed (-perturb)",
+      "section": "Advanced",
+      "flag": "-perturb",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "help_text": "Random perturbation seed for guide tree (0 = no perturbation)."
+    },
+    {
+      "name": "consiters",
+      "label": "Consistency iterations (-consiters)",
+      "section": "Advanced",
+      "flag": "-consiters",
+      "type": "number",
+      "default": 2,
+      "min": 0,
+      "max": 100,
+      "help_text": "Number of consistency iterations. Higher values improve accuracy but increase runtime. Default 2."
+    },
+    {
+      "name": "refineiters",
+      "label": "Refinement iterations (-refineiters)",
+      "section": "Advanced",
+      "flag": "-refineiters",
+      "type": "number",
+      "default": 100,
+      "min": 0,
+      "max": 1000,
+      "help_text": "Number of refinement iterations. Higher values may improve accuracy. Default 100."
+    }
+  ]
+}

@@ -1,0 +1,932 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mp-page">
+
+  <h1 class="mp-title">My Projects</h1>
+
+  <div class="mp-tabs">
+    <a href="{% url 'my-projects' %}"
+       class="mp-tab {% if not active_tool %}mp-tab-active{% endif %}">All</a>
+    <a href="{% url 'my-projects' %}?tool=hmmbuild"
+       class="mp-tab {% if active_tool == 'hmmbuild' %}mp-tab-active{% endif %}">HMMBUILD</a>
+    <a href="{% url 'my-projects' %}?tool=hmmemit"
+       class="mp-tab {% if active_tool == 'hmmemit' %}mp-tab-active{% endif %}">HMMEMIT</a>
+    <a href="{% url 'my-projects' %}?tool=hmmsearch"
+       class="mp-tab {% if active_tool == 'hmmsearch' %}mp-tab-active{% endif %}">HMMSEARCH</a>
+    <a href="{% url 'my-projects' %}?tool=preprocessing"
+       class="mp-tab {% if active_tool == 'preprocessing' %}mp-tab-active{% endif %}">Preprocessing</a>
+    <a href="{% url 'my-projects' %}?tool=workflows"
+       class="mp-tab {% if active_tool == 'workflows' %}mp-tab-active{% endif %}">Workflows</a>
+  </div>
+
+  
+  {% if active_tool == 'workflows' %}
+
+    {% if workflow_runs %}
+    <form method="POST" action="{% url 'delete_selected_projects' %}" id="bulk-delete-form">
+      {% csrf_token %}
+      <input type="hidden" name="from_tool" value="workflows">
+
+      <div class="projects-toolbar">
+        <div class="projects-toolbar-left">
+          <span class="projects-count">{{ workflow_runs|length }} run{{ workflow_runs|length|pluralize }}</span>
+        </div>
+        <div class="projects-toolbar-right">
+          <label class="bulk-select">
+            <input type="checkbox" id="select-all">
+            <span>Select all</span>
+          </label>
+          <span class="toolbar-separator" aria-hidden="true"></span>
+          <span class="selected-count" id="selected-count">0 selected</span>
+          <button type="submit" id="bulk-delete-btn" class="delete-selected-btn" disabled>
+            Delete selected
+          </button>
+        </div>
+      </div>
+
+      {% for item in workflow_runs %}
+      <div class="mp-card">
+        <div class="mp-card-body">
+          {% if item.run.is_mine %}
+          <div class="mp-check"><input type="checkbox" class="project-checkbox"
+                 name="selected_projects" value="{{ item.run.id }}" data-tool="workflow_run"></div>
+          {% else %}
+          <div class="mp-check"></div>
+          {% endif %}
+          <div class="mp-main">
+            <div class="mp-name-row">
+              <span class="mp-name">{% if item.run.name %}{{ item.run.name }}{% elif item.run.workflow %}{{ item.run.workflow.name }}{% else %}Pipeline Run{% endif %}</span>
+              <span class="mp-badge mp-b-pipeline">PIPELINE</span>
+              <span class="mp-status mp-s-done"><span class="mp-status-dot"></span>Completed</span>
+              {% if not item.run.is_mine %}
+                <span class="mp-status mp-s-shared"><span class="mp-status-dot"></span>Shared</span>
+              {% elif item.run.visibility == 'public' %}
+                <span class="mp-status mp-s-public"><span class="mp-status-dot"></span>Public</span>
+              {% elif item.run.visibility == 'link' %}
+                <span class="mp-status mp-s-link"><span class="mp-status-dot"></span>Link only</span>
+              {% else %}
+                <span class="mp-status mp-s-private"><span class="mp-status-dot"></span>Private</span>
+              {% endif %}
+              <span class="mp-date">{{ item.run.created_at|date:"Y-m-d H:i" }}</span>
+            </div>
+
+            <div class="mp-file-rows">
+              {% if item.run.input_file and item.run.is_mine %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  <a href="{% url 'workflow_run_input_download' item.run.id %}" class="mp-fc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    workflow input
+                  </a>
+                </span>
+              </div>
+              {% endif %}
+              {% if item.run.output_file %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  <a href="{% url 'workflow_run_download' item.run.id %}" class="mp-fc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    result{{ item.run.output_file.name|slice:"-5:" }}
+                  </a>
+                </span>
+              </div>
+              {% endif %}
+            </div>
+
+            {% if item.steps %}
+            <div class="mp-file-row mp-file-row--summary">
+              <span class="mp-fl">Summary</span>
+              <span class="mp-file-items">
+                <span class="mp-summary-inline">{{ item.steps|length }} step{{ item.steps|length|pluralize }} - {% for step in item.steps %}<span style="color:{{ step.color }}; font-weight:600;">{{ step.label }}</span>{% if not forloop.last %}&nbsp;<span style="color:#c8d0db;">&rsaquo;</span>&nbsp;{% endif %}{% endfor %}</span>
+              </span>
+            </div>
+            {% endif %}
+            {% if item.run.preview.text %}
+            <div class="mp-file-row mp-file-row--preview">
+              <span class="mp-fl">Preview</span>
+              <span class="mp-file-items">
+                <button type="button" class="mp-expand-link" onclick="togglePreview(this)">
+                  <span class="mp-expand-text">Show {{ item.run.preview.label|default:"output" }} preview</span>
+                  <svg class="mp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </span>
+            </div>
+            <div class="mp-preview-content" style="display:none;">
+              <pre class="mp-preview-pre">{{ item.run.preview.text }}</pre>
+              <div class="mp-preview-note">{{ item.run.preview.note }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="mp-card-footer">
+          <a href="{% url 'shared-project' 'workflow_run' item.run.share_token %}?from=my-projects&tab={{ active_tool|default:'all' }}" class="mp-btn mp-btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            View
+          </a>
+          {% if item.run.workflow %}
+          <a href="{% url 'workflow_run_start' item.run.workflow.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Re-run
+          </a>
+          {% endif %}
+          {% if item.run.is_mine %}
+          <a href="{% url 'share-project' 'workflow_run' item.run.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share
+          </a>
+          <button type="button" class="mp-btn mp-btn-del"
+                  onclick="deleteProject('{% url 'delete_project' item.run.id %}?tool=workflow_run', '{{ item.run.name|default:'Workflow run'|escapejs }}', 'workflows')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Delete
+          </button>
+          {% else %}
+          <button type="button" class="mp-btn"
+                  onclick="removeSharedProject('{% url 'remove-shared-project' 'workflow_run' item.run.id %}', '{{ item.run.name|default:'Workflow run'|escapejs }}')">
+            Remove
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </form>
+
+    {% if wf_page_obj.has_other_pages %}
+    <div class="mp-pager">
+      {% if wf_page_obj.has_previous %}
+        <a href="?tool=workflows&page=1" class="mp-btn">First</a>
+        <a href="?tool=workflows&page={{ wf_page_obj.previous_page_number }}" class="mp-btn">Prev</a>
+      {% endif %}
+      <span class="mp-pager-text">Page {{ wf_page_obj.number }} of {{ wf_page_obj.paginator.num_pages }}</span>
+      {% if wf_page_obj.has_next %}
+        <a href="?tool=workflows&page={{ wf_page_obj.next_page_number }}" class="mp-btn">Next</a>
+        <a href="?tool=workflows&page={{ wf_page_obj.paginator.num_pages }}" class="mp-btn">Last</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="mp-launcher mp-launcher--single">
+      <div class="mp-launcher-inner">
+        <p class="mp-launcher-title">Start a workflow run</p>
+        <p class="mp-launcher-sub">Browse available pipelines and launch a workflow.</p>
+  
+        <div class="mp-tool-grid mp-tool-grid--single">
+          <div class="mp-tool-card">
+            <div class="mp-tool-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </div>
+            <div class="mp-tool-name">Pipelines</div>
+            <div class="mp-tool-desc">Browse and run available analysis workflows</div>
+            <a href="{% url 'workflow_list' %}" class="mp-tool-btn">Browse pipelines</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  
+  {% elif active_tool == 'preprocessing' %}
+
+    
+    <div class="mp-subtabs">
+      <a href="{% url 'my-projects' %}?tool=preprocessing"
+         class="mp-subtab {% if not active_preproc_type %}is-active{% endif %}">All</a>
+      <a href="{% url 'my-projects' %}?tool=preprocessing&amp;type=fasta_validator"
+         class="mp-subtab {% if active_preproc_type == 'fasta_validator' %}is-active{% endif %}">FASTA Validator</a>
+      <a href="{% url 'my-projects' %}?tool=preprocessing&amp;type=sequence_cleaner"
+         class="mp-subtab {% if active_preproc_type == 'sequence_cleaner' %}is-active{% endif %}">Sequence Cleaner</a>
+      <a href="{% url 'my-projects' %}?tool=preprocessing&amp;type=msa"
+         class="mp-subtab {% if active_preproc_type == 'msa' %}is-active{% endif %}">MSA</a>
+      <a href="{% url 'my-projects' %}?tool=preprocessing&amp;type=format_converter"
+         class="mp-subtab {% if active_preproc_type == 'format_converter' %}is-active{% endif %}">Format Converter</a>
+    </div>
+
+    {% if preproc_items %}
+    <form method="POST" action="{% url 'delete_selected_projects' %}" id="bulk-delete-form">
+      {% csrf_token %}
+      <input type="hidden" name="from_tool" value="preprocessing">
+
+      <div class="projects-toolbar">
+        <div class="projects-toolbar-left">
+          <span class="projects-count">{{ preproc_items|length }} result{{ preproc_items|length|pluralize }}</span>
+        </div>
+        <div class="projects-toolbar-right">
+          <label class="bulk-select">
+            <input type="checkbox" id="select-all">
+            <span>Select all</span>
+          </label>
+          <span class="toolbar-separator" aria-hidden="true"></span>
+          <span class="selected-count" id="selected-count">0 selected</span>
+          <button type="submit" id="bulk-delete-btn" class="delete-selected-btn" disabled>
+            Delete selected
+          </button>
+        </div>
+      </div>
+
+      {% for item in preproc_items %}
+      <div class="mp-card">
+        <div class="mp-card-body">
+          <div class="mp-check"><input type="checkbox" class="project-checkbox"
+                 name="selected_projects" value="{{ item.id }}" data-tool="{{ item.tool_type }}"></div>
+          <div class="mp-main">
+            <div class="mp-name-row">
+              <span class="mp-name">{{ item.name }}</span>
+              {% if item.tool_type == 'clustalo' %}
+                <span class="mp-badge {% if item.msa_tool == 'mafft' %}mp-b-msa-mafft{% elif item.msa_tool == 'muscle' %}mp-b-msa-muscle{% elif item.msa_tool == 'kalign' %}mp-b-msa-kalign{% else %}mp-b-msa-clustalo{% endif %}">{{ item.tool_label }}</span>
+              {% else %}
+                <span class="mp-badge mp-b-preproc">{{ item.tool_label }}</span>
+              {% endif %}
+              <span class="mp-status mp-s-done"><span class="mp-status-dot"></span>Completed</span>
+              <span class="mp-date">{{ item.created_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            <div class="mp-file-rows">
+              {% if item.input_download_url %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  <a href="{{ item.input_download_url }}" class="mp-fc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    {{ item.input_label }}
+                  </a>
+                </span>
+              </div>
+              {% endif %}
+              {% if item.output_url %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  <a href="{{ item.output_url }}" download class="mp-fc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    {{ item.output_label }}
+                  </a>
+                </span>
+              </div>
+              {% endif %}
+              {% if item.stats_summary %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Summary</span>
+                <span class="mp-file-items">
+                  <span class="mp-fc mp-fc-info">{{ item.stats_summary }}</span>
+                </span>
+              </div>
+              {% elif item.preview_fallback %}
+              <div class="mp-file-row mp-file-row--summary">
+                <span class="mp-fl">Summary</span>
+                <span class="mp-file-items">
+                  <span class="mp-summary-inline">{{ item.preview_fallback }}</span>
+                </span>
+              </div>
+              {% endif %}
+            </div>
+            {% if item.preview.text %}
+            <div class="mp-file-row mp-file-row--preview">
+              <span class="mp-fl">Preview</span>
+              <span class="mp-file-items">
+                <button type="button" class="mp-expand-link" onclick="togglePreview(this)">
+                  <span class="mp-expand-text">Show {{ item.preview.label|default:"result" }} preview</span>
+                  <svg class="mp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </span>
+            </div>
+            <div class="mp-preview-content" style="display:none;">
+              <pre class="mp-preview-pre">{{ item.preview.text }}</pre>
+              <div class="mp-preview-note">{{ item.preview.note }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="mp-card-footer">
+          {% if item.detail_url %}
+          <a href="{{ item.detail_url }}" class="mp-btn mp-btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            View
+          </a>
+          {% endif %}
+          {% if item.download_url %}
+          <a href="{{ item.download_url }}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </a>
+          {% endif %}
+          <a href="{% url 'share-project' item.tool_type item.id %}" class="mp-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share
+          </a>
+          <button type="button" class="mp-btn mp-btn-del"
+                  onclick="deleteProject('{% url 'delete_project' item.id %}?tool={{ item.tool_type }}', '{{ item.name|escapejs }}', 'preprocessing')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </form>
+
+    {% if preproc_page_obj.has_other_pages %}
+    <div class="mp-pager">
+      {% if preproc_page_obj.has_previous %}
+        <a href="?tool=preprocessing&page=1" class="mp-btn">First</a>
+        <a href="?tool=preprocessing&page={{ preproc_page_obj.previous_page_number }}" class="mp-btn">Prev</a>
+      {% endif %}
+      <span class="mp-pager-text">Page {{ preproc_page_obj.number }} of {{ preproc_page_obj.paginator.num_pages }}</span>
+      {% if preproc_page_obj.has_next %}
+        <a href="?tool=preprocessing&page={{ preproc_page_obj.next_page_number }}" class="mp-btn">Next</a>
+        <a href="?tool=preprocessing&page={{ preproc_page_obj.paginator.num_pages }}" class="mp-btn">Last</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="mp-launcher">
+      <p class="mp-launcher-title">Start a preprocessing task</p>
+      <p class="mp-launcher-sub">Choose one of the preprocessing tools below to create your first result.</p>
+
+      <div class="mp-tool-grid">
+        <div class="mp-tool-card">
+          <div class="mp-tool-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div class="mp-tool-name">FASTA Validator</div>
+          <div class="mp-tool-desc">Validate FASTA structure and format</div>
+          <a href="{% url 'fasta_validate' %}" class="mp-tool-btn">Open tool</a>
+        </div>
+
+        <div class="mp-tool-card">
+          <div class="mp-tool-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          </div>
+          <div class="mp-tool-name">Sequence Cleaner</div>
+          <div class="mp-tool-desc">Clean and normalize sequence data</div>
+          <a href="{% url 'fasta_clean' %}" class="mp-tool-btn">Open tool</a>
+        </div>
+
+        <div class="mp-tool-card">
+          <div class="mp-tool-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+          </div>
+          <div class="mp-tool-name">MSA</div>
+          <div class="mp-tool-desc">Run multiple sequence alignment</div>
+          <a href="{% url 'clustalo_form' %}" class="mp-tool-btn">Open tool</a>
+        </div>
+
+        <div class="mp-tool-card">
+          <div class="mp-tool-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+          <div class="mp-tool-name">Format Converter</div>
+          <div class="mp-tool-desc">Convert between supported formats</div>
+          <a href="{% url 'format_convert_form' %}" class="mp-tool-btn">Open tool</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  
+  {% else %}
+
+  {% if projects %}
+  <form method="POST" action="{% url 'delete_selected_projects' %}" id="bulk-delete-form">
+    {% csrf_token %}
+    <input type="hidden" name="from_tool" value="{{ active_tool|default:'' }}">
+
+    <div class="projects-toolbar">
+      <div class="projects-toolbar-left">
+        <span class="projects-count">{{ projects|length }} project{{ projects|length|pluralize }}</span>
+      </div>
+      <div class="projects-toolbar-right">
+        <label class="bulk-select">
+          <input type="checkbox" id="select-all">
+          <span>Select all</span>
+        </label>
+        <span class="toolbar-separator" aria-hidden="true"></span>
+        <span class="selected-count" id="selected-count">0 selected</span>
+        <button type="submit" id="bulk-delete-btn" class="delete-selected-btn" disabled>
+          Delete selected
+        </button>
+      </div>
+    </div>
+
+    {% for project in projects %}
+    <div class="mp-card" data-tool="{{ project.tool_type }}">
+      <div class="mp-card-body">
+        {% if project.is_mine %}
+        <div class="mp-check"><input type="checkbox" class="project-checkbox"
+                 name="selected_projects" value="{{ project.id }}" data-tool="{{ project.tool_type }}"></div>
+        {% else %}
+        <div class="mp-check"></div>
+        {% endif %}
+
+        <div class="mp-main">
+          <div class="mp-name-row">
+            <span class="mp-name">{{ project.name }}</span>
+
+            {% if project.tool_type == 'hmmbuild' %}
+              <span class="mp-badge mp-b-hmmbuild">HMMBUILD</span>
+            {% elif project.tool_type == 'hmmemit' %}
+              <span class="mp-badge mp-b-hmmemit">HMMEMIT</span>
+            {% elif project.tool_type == 'hmmsearch' %}
+              <span class="mp-badge mp-b-hmmsearch">HMMSEARCH</span>
+            {% elif project.tool_type == 'fasta_validate' %}
+              <span class="mp-badge mp-b-preproc">FASTA VALIDATE</span>
+            {% elif project.tool_type == 'sequence_cleaner' %}
+              <span class="mp-badge mp-b-preproc">SEQ CLEANER</span>
+            {% elif project.tool_type == 'clustalo' %}
+              <span class="mp-badge {% if project.tool == 'mafft' %}mp-b-msa-mafft{% elif project.tool == 'muscle' %}mp-b-msa-muscle{% elif project.tool == 'kalign' %}mp-b-msa-kalign{% else %}mp-b-msa-clustalo{% endif %}">{{ project.get_tool_display }}</span>
+            {% elif project.tool_type == 'format_convert' %}
+              <span class="mp-badge mp-b-preproc">FORMAT CONVERT</span>
+            {% elif project.tool_type == 'workflow_run' %}
+              <span class="mp-badge mp-b-preproc">WORKFLOW</span>
+            {% elif project.tool_type %}
+              <span class="mp-badge mp-b-preproc">{{ project.tool_type|upper }}</span>
+            {% endif %}
+
+            {% if project.task_status == 'SUCCESS' %}
+              <span class="mp-status mp-s-done"><span class="mp-status-dot"></span>Completed</span>
+            {% elif project.task_status == 'FAILURE' %}
+              <span class="mp-status mp-s-fail"><span class="mp-status-dot"></span>Failed</span>
+            {% elif project.task_status == 'PENDING' or project.task_status == 'STARTED' %}
+              <span class="mp-status mp-s-run"><span class="mp-status-dot"></span>Running</span>
+            {% endif %}
+
+            {% if not project.is_mine %}
+              <span class="mp-status mp-s-shared"><span class="mp-status-dot"></span>Shared</span>
+            {% elif project.visibility == 'public' %}
+              <span class="mp-status mp-s-public"><span class="mp-status-dot"></span>Public</span>
+            {% elif project.visibility == 'link' %}
+              <span class="mp-status mp-s-link"><span class="mp-status-dot"></span>Link only</span>
+            {% elif project.visibility == 'private' %}
+              <span class="mp-status mp-s-private"><span class="mp-status-dot"></span>Private</span>
+            {% endif %}
+            <span class="mp-date">{{ project.created_at|date:"Y-m-d H:i" }}</span>
+          </div>
+
+          {% if not active_tool %}
+          <div class="mp-file-row mp-file-row--summary">
+            <span class="mp-fl">Summary</span>
+            <span class="mp-file-items">
+              <span class="mp-summary-inline">{{ project.summary_line|default:"Output information unavailable" }}</span>
+            </span>
+          </div>
+          {% else %}
+          {% with tool=active_tool|default:project.tool_type %}
+
+          {% if tool == 'hmmbuild' %}
+            <div class="mp-file-rows">
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  <a href="{{ project.msa_file.url }}" download class="mp-fc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    {{ project.name }}.msa
+                  </a>
+                </span>
+              </div>
+              {% with result_files=project.get_result_files %}{% if result_files %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  {% for rf in result_files %}<a href="{{ rf.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ rf.filename }}</a>{% endfor %}
+                </span>
+              </div>
+              {% endif %}{% endwith %}
+            </div>
+
+          {% elif tool == 'hmmsearch' %}
+            <div class="mp-file-rows">
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  {% if project.fasta_file %}<a href="{{ project.fasta_file.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.fasta</a>{% endif %}
+                  {% if project.hmm_source == 'pfam' %}<span class="mp-fc mp-fc-info">Pfam: {{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</span>
+                  {% elif project.hmm_source == 'interpro' %}<span class="mp-fc mp-fc-info">InterPro: {{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</span>
+                  {% elif project.hmm_file %}<a href="{{ project.hmm_file.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.hmm</a>{% endif %}
+                </span>
+              </div>
+              {% with result_files=project.get_result_files %}{% if result_files %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  {% for rf in result_files %}<a href="{{ rf.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ rf.filename }}</a>{% endfor %}
+                </span>
+              </div>
+              {% endif %}{% endwith %}
+            </div>
+
+          {% elif tool == 'hmmemit' %}
+            <div class="mp-file-rows">
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  {% if project.hmm_source == 'pfam' %}<span class="mp-fc mp-fc-info">Pfam: {{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</span>
+                  {% elif project.hmm_source == 'interpro' %}<span class="mp-fc mp-fc-info">InterPro: {{ project.external_hmm_id }}{% if project.external_hmm_name %} - {{ project.external_hmm_name }}{% endif %}</span>
+                  {% elif project.hmm_file %}<a href="{{ project.hmm_file.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.hmm</a>{% endif %}
+                </span>
+              </div>
+              {% with result_files=project.get_result_files %}{% if result_files %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  {% for rf in result_files %}<a href="{{ rf.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ rf.filename }}</a>{% endfor %}
+                </span>
+              </div>
+              {% endif %}{% endwith %}
+            </div>
+          {% elif tool == 'fasta_validate' %}
+            <div class="mp-file-rows">
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  {% if project.input_fasta %}<a href="{% url 'fasta_validate_input_download' project.id %}" class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.fasta</a>{% endif %}
+                </span>
+              </div>
+            </div>
+
+          {% elif tool == 'sequence_cleaner' %}
+            <div class="mp-file-rows">
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  {% if project.input_fasta %}<a href="{% url 'fasta_clean_input_download' project.id %}" class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.fasta</a>{% endif %}
+                </span>
+              </div>
+              {% if project.output_fasta %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  <a href="{{ project.output_fasta.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}_cleaned.fasta</a>
+                </span>
+              </div>
+              {% endif %}
+            </div>
+
+          {% elif tool == 'clustalo' %}
+            <div class="mp-file-rows">
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  {% if project.input_fasta %}<a href="{% url 'clustalo_input_download' project.id %}" class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.fasta</a>{% endif %}
+                </span>
+              </div>
+              {% if project.output_alignment %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  <a href="{{ project.output_alignment.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.{{ project.output_format }}</a>
+                </span>
+              </div>
+              {% endif %}
+            </div>
+
+          {% elif tool == 'format_convert' %}
+            <div class="mp-file-rows">
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  {% if project.input_file %}<a href="{% url 'format_convert_input_download' project.id %}" class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.{{ project.input_format }}</a>{% endif %}
+                </span>
+              </div>
+              {% if project.output_file %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  <a href="{{ project.output_file.url }}" download class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{{ project.name }}.{{ project.output_format }}</a>
+                </span>
+              </div>
+              {% endif %}
+            </div>
+
+          {% elif tool == 'workflow_run' %}
+            <div class="mp-file-rows">
+              {% if project.input_file and project.is_mine %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Input:</span>
+                <span class="mp-file-items">
+                  <a href="{% url 'workflow_run_input_download' project.id %}" class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>workflow input</a>
+                </span>
+              </div>
+              {% endif %}
+              {% if project.output_file %}
+              <div class="mp-file-row">
+                <span class="mp-fl">Output:</span>
+                <span class="mp-file-items">
+                  <a href="{% url 'workflow_run_download' project.id %}" class="mp-fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>workflow output</a>
+                </span>
+              </div>
+              {% endif %}
+            </div>
+          {% endif %}
+          {% endwith %}
+
+          {% if project.tool_type == 'workflow_run' and project.workflow_steps %}
+          <div class="mp-file-row mp-file-row--summary">
+            <span class="mp-fl">Summary</span>
+            <span class="mp-file-items">
+              <span class="mp-summary-inline">{{ project.workflow_steps|length }} step{{ project.workflow_steps|length|pluralize }} - {% for step in project.workflow_steps %}<span style="color:{{ step.color }}; font-weight:600;">{{ step.label }}</span>{% if not forloop.last %}&nbsp;<span style="color:#c8d0db;">&rsaquo;</span>&nbsp;{% endif %}{% endfor %}</span>
+            </span>
+          </div>
+          {% elif project.summary_line %}
+          <div class="mp-file-row mp-file-row--summary">
+            <span class="mp-fl">Summary</span>
+            <span class="mp-file-items">
+              <span class="mp-summary-inline">{{ project.summary_line }}</span>
+            </span>
+          </div>
+          {% elif project.preview_fallback %}
+          <div class="mp-file-row mp-file-row--summary">
+            <span class="mp-fl">Summary</span>
+            <span class="mp-file-items">
+              <span class="mp-summary-inline">{{ project.preview_fallback }}</span>
+            </span>
+          </div>
+          {% endif %}
+          {% if project.preview.text %}
+          <div class="mp-file-row mp-file-row--preview">
+            <span class="mp-fl">Preview</span>
+            <span class="mp-file-items">
+              <button type="button" class="mp-expand-link" onclick="togglePreview(this)">
+                <span class="mp-expand-text">Show {{ project.preview.label|default:"result" }} preview</span>
+                <svg class="mp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </span>
+          </div>
+          <div class="mp-preview-content" style="display:none;">
+            <pre class="mp-preview-pre">{{ project.preview.text }}</pre>
+            <div class="mp-preview-note">{{ project.preview.note }}</div>
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="mp-card-footer">
+        {% if project.tool_type == 'workflow_run' %}
+        <a href="{% url 'shared-project' 'workflow_run' project.share_token %}?from=my-projects&tab={{ active_tool|default:'all' }}" class="mp-btn mp-btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          View
+        </a>
+        {% else %}
+        <a href="{% url 'shared-project' project.tool_type project.share_token %}?from=my-projects&tab={{ active_tool|default:'all' }}" class="mp-btn mp-btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          View
+        </a>
+        {% endif %}
+        {% if project.is_mine %}
+        <a href="{% url 'share-project' project.tool_type project.id %}" class="mp-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share
+        </a>
+        <button type="button" class="mp-btn mp-btn-del"
+                onclick="deleteProject('{% url 'delete_project' project.id %}?tool={{ project.tool_type }}', '{{ project.name|escapejs }}', '{{ active_tool|default:'' }}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Delete
+        </button>
+        {% else %}
+        <button type="button" class="mp-btn"
+                onclick="removeSharedProject('{% url 'remove-shared-project' project.tool_type project.id %}', '{{ project.name|escapejs }}')">
+          Remove
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </form>
+
+  {% if page_obj.has_other_pages %}
+  <div class="mp-pager">
+    {% if page_obj.has_previous %}
+      <a href="?tool={{ active_tool }}&page=1" class="mp-btn">First</a>
+      <a href="?tool={{ active_tool }}&page={{ page_obj.previous_page_number }}" class="mp-btn">Previous</a>
+    {% endif %}
+    <span class="mp-pager-text">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?tool={{ active_tool }}&page={{ page_obj.next_page_number }}" class="mp-btn">Next</a>
+      <a href="?tool={{ active_tool }}&page={{ page_obj.paginator.num_pages }}" class="mp-btn">Last</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  {% if active_tool == 'hmmbuild' %}
+  <div class="mp-launcher mp-launcher--single">
+    <div class="mp-launcher-inner">
+      <p class="mp-launcher-title">Start an HMMBUILD task</p>
+      <p class="mp-launcher-sub">Create an HMM profile from a multiple sequence alignment.</p>
+
+      <div class="mp-tool-grid mp-tool-grid--single">
+        <div class="mp-tool-card">
+          <div class="mp-tool-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          </div>
+          <div class="mp-tool-name">HMMBUILD</div>
+          <div class="mp-tool-desc">Build a profile HMM from aligned input sequences</div>
+          <a href="{% url 'hmmbuild_form' %}" class="mp-tool-btn">Open tool</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% elif active_tool == 'hmmemit' %}
+  <div class="mp-launcher mp-launcher--single">
+    <div class="mp-launcher-inner">
+      <p class="mp-launcher-title">Start an HMMEMIT task</p>
+      <p class="mp-launcher-sub">Generate biological sequences from an HMM profile.</p>
+
+      <div class="mp-tool-grid mp-tool-grid--single">
+        <div class="mp-tool-card">
+          <div class="mp-tool-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="mp-tool-name">HMMEMIT</div>
+          <div class="mp-tool-desc">Emit one or more sequences from an HMM profile</div>
+          <a href="{% url 'hmmemit_form' %}" class="mp-tool-btn">Open tool</a>
+        </div>
+      </div>
+    </div>
+  </div>
+{% elif active_tool == 'hmmsearch' %}
+  <div class="mp-launcher mp-launcher--single">
+    <div class="mp-launcher-inner">
+      <p class="mp-launcher-title">Start an HMMSEARCH task</p>
+      <p class="mp-launcher-sub">Search sequence databases using an HMM profile.</p>
+
+      <div class="mp-tool-grid mp-tool-grid--single">
+        <div class="mp-tool-card">
+          <div class="mp-tool-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div class="mp-tool-name">HMMSEARCH</div>
+          <div class="mp-tool-desc">Find matching sequences with a profile HMM</div>
+          <a href="{% url 'hmmsearch_form' %}" class="mp-tool-btn">Open tool</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="mp-launcher">
+    <p class="mp-launcher-title">Start your first analysis</p>
+    <p class="mp-launcher-sub">Choose a tool below to create your first project or workflow result.</p>
+
+    <div class="mp-tool-grid mp-tool-grid--all">
+      <div class="mp-tool-card">
+        <div class="mp-tool-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <div class="mp-tool-name">HMMBUILD</div>
+        <div class="mp-tool-desc">Build a profile HMM from aligned input sequences</div>
+        <a href="{% url 'hmmbuild_form' %}" class="mp-tool-btn">Open tool</a>
+      </div>
+
+      <div class="mp-tool-card">
+        <div class="mp-tool-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="mp-tool-name">HMMEMIT</div>
+        <div class="mp-tool-desc">Emit sequences from an HMM profile</div>
+        <a href="{% url 'hmmemit_form' %}" class="mp-tool-btn">Open tool</a>
+      </div>
+
+      <div class="mp-tool-card">
+        <div class="mp-tool-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="mp-tool-name">HMMSEARCH</div>
+        <div class="mp-tool-desc">Search sequence databases with a profile HMM</div>
+        <a href="{% url 'hmmsearch_form' %}" class="mp-tool-btn">Open tool</a>
+      </div>
+
+      <div class="mp-tool-card">
+        <div class="mp-tool-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="mp-tool-name">Preprocessing</div>
+        <div class="mp-tool-desc">Validate, clean, align, or convert sequence files</div>
+        <a href="{% url 'my-projects' %}?tool=preprocessing" class="mp-tool-btn">Choose tool</a>
+      </div>
+
+      <div class="mp-tool-card">
+        <div class="mp-tool-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
+        <div class="mp-tool-name">Pipelines</div>
+        <div class="mp-tool-desc">Browse and run available analysis workflows</div>
+        <a href="{% url 'workflow_list' %}" class="mp-tool-btn">Browse pipelines</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {% endif %}
+
+</div>
+
+<script>
+const MP_SCROLL_KEY = 'my-projects-scroll-y';
+
+function saveProjectListScroll() {
+  try {
+    sessionStorage.setItem(MP_SCROLL_KEY, String(window.scrollY || 0));
+  } catch (e) {}
+}
+
+function restoreProjectListScroll() {
+  let y = null;
+  try {
+    y = sessionStorage.getItem(MP_SCROLL_KEY);
+    sessionStorage.removeItem(MP_SCROLL_KEY);
+  } catch (e) {}
+  if (y === null) return;
+  requestAnimationFrame(function () {
+    window.scrollTo({ top: parseInt(y, 10) || 0, left: 0, behavior: 'auto' });
+  });
+}
+
+function togglePreview(btn) {
+  const card = btn.closest('.mp-card');
+  const content = card.querySelector('.mp-preview-content');
+  const chev = btn.querySelector('.mp-chev');
+  const label = btn.querySelector('.mp-expand-text');
+  const open = content.style.display !== 'none';
+  if (label && !label.dataset.closedText) label.dataset.closedText = label.textContent;
+  content.style.display = open ? 'none' : 'block';
+  if (chev) chev.classList.toggle('mp-open', !open);
+  if (label) label.textContent = open ? label.dataset.closedText : 'Hide preview';
+}
+
+
+function deleteProject(url, projectName, fromTool) {
+  if (!confirm('Delete "' + projectName + '"?')) return;
+  saveProjectListScroll();
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const fd = new FormData(); fd.append('from_tool', fromTool);
+  fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: fd })
+    .then(r => { if (r.redirected) window.location.href = r.url; else window.location.reload(); });
+}
+
+function removeSharedProject(url, projectName) {
+  if (!confirm('Remove "' + projectName + '"?')) return;
+  saveProjectListScroll();
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf } })
+    .then(r => { if (r.redirected) window.location.href = r.url; else window.location.reload(); });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  restoreProjectListScroll();
+
+  const selectAll = document.getElementById('select-all');
+  const checkboxes = document.querySelectorAll('.project-checkbox');
+  const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+  const bulkDeleteForm = document.getElementById('bulk-delete-form');
+  const selectedCount = document.getElementById('selected-count');
+
+  function toggleDeleteBtn() {
+    const checked = document.querySelectorAll('.project-checkbox:checked').length;
+    const has = checked > 0;
+    if (bulkDeleteBtn) {
+      bulkDeleteBtn.disabled = !has;
+      bulkDeleteBtn.classList.toggle('is-active', has);
+    }
+    if (selectedCount) {
+      selectedCount.textContent = checked + ' selected';
+      selectedCount.classList.toggle('has-selection', has);
+    }
+  }
+
+  if (selectAll) selectAll.addEventListener('change', function () {
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    toggleDeleteBtn();
+  });
+  checkboxes.forEach(cb => cb.addEventListener('change', toggleDeleteBtn));
+
+  if (bulkDeleteForm) bulkDeleteForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const checkedBoxes = document.querySelectorAll('.project-checkbox:checked');
+    if (checkedBoxes.length === 0) return;
+
+    const word = checkedBoxes.length === 1 ? 'project' : 'projects';
+    if (!confirm('Delete ' + checkedBoxes.length + ' ' + word + '? This cannot be undone.')) {
+      return;
+    }
+    saveProjectListScroll();
+
+    const projectsByTool = {};
+    checkedBoxes.forEach(cb => {
+      const t = cb.getAttribute('data-tool');
+      if (!projectsByTool[t]) projectsByTool[t] = [];
+      projectsByTool[t].push(cb.value);
+    });
+    checkboxes.forEach(cb => cb.disabled = true);
+    for (const [toolType, ids] of Object.entries(projectsByTool)) {
+      const inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = 'projects_by_tool';
+      inp.value = JSON.stringify({ tool: toolType, ids });
+      bulkDeleteForm.appendChild(inp);
+    }
+    bulkDeleteForm.submit();
+  });
+});
+</script>
+{% endblock %}

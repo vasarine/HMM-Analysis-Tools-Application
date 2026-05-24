@@ -1,0 +1,181 @@
+{
+  "tool_id": "kalign",
+  "display_name": "Kalign",
+  "executable": "kalign",
+  "fixed_args": [],
+  "supported_output_formats": ["fasta", "clustal"],
+  "parameters": [
+    {
+      "name": "mode",
+      "label": "Alignment mode",
+      "section": "Basic",
+      "type": "radio_group",
+      "default": "default",
+      "options": [
+        {"value": "default", "label": "Default (consistency anchors + VSM)", "flag": null},
+        {"value": "fast",    "label": "--fast · VSM only, no consistency (fastest)", "flag": "--fast"},
+        {"value": "precise", "label": "--precise · Ensemble(3) + VSM + realign (highest precision)", "flag": "--precise"}
+      ],
+      "help_text": "Preset that controls overall accuracy/speed trade-off. Fast and precise are mutually exclusive."
+    },
+    {
+      "name": "type",
+      "label": "Alignment type (--type)",
+      "section": "Basic",
+      "flag": "--type",
+      "type": "select",
+      "default": null,
+      "options": ["protein", "divergent", "rna", "dna", "internal"],
+      "help_text": "Force alignment type. Leave empty for auto-detection. 'divergent' is for divergent protein sets; 'internal' is for nucleotide-like data."
+    },
+    {
+      "name": "nthreads",
+      "label": "Threads (--nthreads)",
+      "section": "Basic",
+      "flag": "--nthreads",
+      "type": "number",
+      "default": 1,
+      "min": 1,
+      "max": 16,
+      "help_text": "Number of CPU cores to use."
+    },
+    {
+      "name": "refine",
+      "label": "Refinement (--refine)",
+      "section": "Advanced",
+      "flag": "--refine",
+      "type": "select",
+      "default": "none",
+      "options": ["none", "all", "confident"],
+      "help_text": "Post-alignment refinement. 'all' refines everywhere; 'confident' only refines confident regions."
+    },
+    {
+      "name": "gpo",
+      "label": "Gap open penalty (--gpo)",
+      "section": "Advanced",
+      "flag": "--gpo",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 50.0,
+      "help_text": "Penalty for opening a gap. Leave empty for auto-tuned default based on input."
+    },
+    {
+      "name": "gpe",
+      "label": "Gap extension penalty (--gpe)",
+      "section": "Advanced",
+      "flag": "--gpe",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 10.0,
+      "help_text": "Penalty for extending an open gap. Leave empty for default."
+    },
+    {
+      "name": "tgpe",
+      "label": "Terminal gap extension penalty (--tgpe)",
+      "section": "Advanced",
+      "flag": "--tgpe",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 10.0,
+      "help_text": "Penalty for extending a terminal gap. Leave empty for default."
+    },
+    {
+      "name": "consistency",
+      "label": "Anchor consistency (--consistency)",
+      "section": "Expert",
+      "flag": "--consistency",
+      "type": "number",
+      "default": 5,
+      "min": 0,
+      "max": 50,
+      "help_text": "Number of consistency anchors (K). Higher values increase accuracy at the cost of speed. Set to 0 to disable consistency anchoring."
+    },
+    {
+      "name": "consistency_weight",
+      "label": "Consistency anchor weight (--consistency-weight)",
+      "section": "Expert",
+      "flag": "--consistency-weight",
+      "type": "float",
+      "default": 2.0,
+      "min": 0.0,
+      "max": 10.0,
+      "help_text": "Weight applied to consistency anchors. Higher = stronger anchoring effect."
+    },
+    {
+      "name": "realign",
+      "label": "Realignment iterations (--realign)",
+      "section": "Expert",
+      "flag": "--realign",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 10,
+      "help_text": "Number of alignment-guided tree rebuild iterations. 0 = no rebuilding. Higher = potentially more accurate, slower."
+    },
+    {
+      "name": "vsm_amax",
+      "label": "VSM amplitude (--vsm-amax)",
+      "section": "Expert",
+      "flag": "--vsm-amax",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 100.0,
+      "help_text": "VSM amplitude parameter. 0 = disabled. Leave empty for auto-tuned default."
+    },
+    {
+      "name": "adaptive_budget",
+      "label": "Adaptive refinement budget (--adaptive-budget)",
+      "section": "Expert",
+      "flag": "--adaptive-budget",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Scale the number of refinement trials based on alignment uncertainty."
+    },
+    {
+      "name": "ensemble",
+      "label": "Ensemble runs (--ensemble)",
+      "section": "Expert",
+      "flag": "--ensemble",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 20,
+      "help_text": "Number of ensemble alignments to compute (0 = off). Higher = more accurate, slower."
+    },
+    {
+      "name": "ensemble_seed",
+      "label": "Ensemble RNG seed (--ensemble-seed)",
+      "section": "Expert",
+      "flag": "--ensemble-seed",
+      "type": "number",
+      "default": 42,
+      "min": 0,
+      "max": 999999,
+      "help_text": "Random seed for ensemble reproducibility. Only used when ensemble > 0."
+    },
+    {
+      "name": "min_support",
+      "label": "Ensemble consensus threshold (--min-support)",
+      "section": "Expert",
+      "flag": "--min-support",
+      "type": "float",
+      "default": null,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Explicit consensus threshold for ensemble alignments. Leave empty for auto. Only used when ensemble > 0."
+    },
+    {
+      "name": "format",
+      "label": "Output format (--format)",
+      "flag": "--format",
+      "type": "select",
+      "options": ["fasta", "msf", "clu"],
+      "default": "fasta",
+      "ui_hidden": true
+    }
+  ]
+}

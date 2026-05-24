@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}{% if run.name %}{{ run.name }}{% elif run.workflow %}{{ run.workflow.name }}{% else %}Pipeline Run{% endif %} – Run #{{ run.id }}{% endblock %}
+
+{% block content %}
+<div class="app-page rr-page" data-run-status="{{ run.status }}">
+
+  <nav class="rr-breadcrumb">
+    <a href="{% url 'home' %}">Home</a>
+    <span>/</span>
+    <a href="{% url 'workflow_list' %}">Workflows</a>
+    <span>/</span>
+    <span class="rr-breadcrumb-current">{% if run.name %}{{ run.name }}{% elif run.workflow %}{{ run.workflow.name }}{% else %}Pipeline Run{% endif %}</span>
+  </nav>
+
+  <div class="rr-title-row">
+    <div>
+      <h1 class="app-page-title rr-title">{% if run.name %}{{ run.name }}{% elif run.workflow %}{{ run.workflow.name }}{% else %}Pipeline Run{% endif %}</h1>
+      <div class="rr-meta">
+        <span class="rr-meta-item">Run #{{ run.id }}</span>
+        <span class="rr-meta-dot">•</span>
+        <span class="rr-meta-item">Started {{ run.created_at|date:"Y-m-d H:i" }}</span>
+        {% if duration %}
+        <span class="rr-meta-dot">•</span>
+        <span class="rr-meta-item">Duration <span id="rr-duration">{{ duration }}</span></span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="rr-actions">
+      {% if run.workflow and run.status != 'FAILURE' %}
+      <a href="{% url 'workflow_run_start' run.workflow.id %}" class="app-btn-secondary">
+        <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        Re-run
+      </a>
+      {% endif %}
+      <a href="{% url 'my-projects' %}?tool=workflows" class="app-btn-secondary">
+        <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        My Projects
+      </a>
+    </div>
+  </div>
+
+  {% if workflow_deleted %}
+  <div class="rr-deleted-notice" style="margin-bottom:1rem;padding:0.5rem 0.875rem;border-radius:6px;background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;font-size:0.8125rem;">
+    Original workflow template was deleted - run results are preserved.
+  </div>
+  {% endif %}
+
+  <div class="rr-status-card" id="rr-status-card">
+    <div class="rr-status-head">
+      <div class="rr-status-check rr-state-success" {% if run.status != 'SUCCESS' %}style="display:none;"{% endif %}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="rr-status-check rr-status-check--running rr-state-running" {% if run.status != 'RUNNING' and run.status != 'PENDING' %}style="display:none;"{% endif %}>
+        <svg class="wf-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </div>
+      <div class="rr-status-check rr-status-check--failed rr-state-failure" {% if run.status != 'FAILURE' %}style="display:none;"{% endif %}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      </div>
+
+      <div class="rr-status-text">
+        <div class="rr-status-title" id="rr-status-title">
+          {% if run.status == 'SUCCESS' %}Pipeline complete
+          {% elif run.status == 'FAILURE' %}Pipeline failed
+          {% elif run.status == 'RUNNING' %}Pipeline is running
+          {% else %}Pipeline queued{% endif %}
+        </div>
+        <div class="rr-status-sub" id="rr-status-sub">
+          {% if run.status == 'SUCCESS' %}All {{ total_steps }} step{{ total_steps|pluralize }} finished successfully
+          {% elif run.status == 'FAILURE' %}
+            {% if failed_step.number %}<span class="rr-status-sub-stepname">Step {{ failed_step.number }} ({{ failed_step.label }}) failed:</span> {{ failed_step.error }}
+            {% else %}{{ failed_step.error|default:"One of the steps failed." }}{% endif %}
+          {% elif run.status == 'RUNNING' %}<span id="rr-progress-text">{{ success_count }} of {{ total_steps }} steps completed</span> - this page updates automatically
+          {% else %}Waiting to start…{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if step_data %}
+    <div class="rr-timeline">
+      {% for item in step_data %}
+      <div class="rr-timeline-step" id="rr-tl-step-{{ item.step.id }}" data-status="{{ item.status }}">
+        <div class="rr-timeline-dot">
+          {% if item.status != 'SUCCESS' %}<svg class="rr-tl-icon-success" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>{% else %}<svg class="rr-tl-icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
+          {% if item.status != 'RUNNING' %}<svg class="wf-spin rr-tl-icon-running" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>{% else %}<svg class="wf-spin rr-tl-icon-running" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>{% endif %}
+          {% if item.status != 'FAILURE' %}<svg class="rr-tl-icon-failure" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>{% else %}<svg class="rr-tl-icon-failure" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>{% endif %}
+          {% if item.status != 'PENDING' %}<svg class="rr-tl-icon-pending" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{% else %}<svg class="rr-tl-icon-pending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{% endif %}
+        </div>
+        <div class="rr-timeline-label">{{ item.step.label }}</div>
+      </div>
+      {% if not forloop.last %}<div class="rr-timeline-connector" id="rr-tl-conn-{{ item.step.id }}" data-connector></div>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if run.status == 'FAILURE' and run.workflow %}
+    <div class="rr-recovery">
+      <form method="POST" action="{% url 'workflow_run_retry' run.id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="app-btn-primary rr-recovery-primary">
+          <svg style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Retry with same input
+        </button>
+      </form>
+      <a href="{% url 'workflow_run_start' run.workflow.id %}" class="app-btn-secondary rr-recovery-secondary">Use a different file</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div id="rr-final-wrap" {% if run.status != 'SUCCESS' or not run.output_file %}style="display:none;"{% endif %}>
+    {% if run.output_file %}
+    <div class="rr-final-card">
+      <div class="rr-final-head">
+        <div class="rr-final-left">
+          <div class="rr-final-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div>
+            <div class="rr-final-label">Final output</div>
+            <div class="rr-final-filename">{{ final_filename|default:"pipeline_result" }}</div>
+          </div>
+        </div>
+        <div class="rr-final-actions">
+          {% if can_download_input %}
+          <a href="{% url 'workflow_run_input_download' run.id %}" class="rr-download-btn rr-download-btn--secondary">
+            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Input
+          </a>
+          {% endif %}
+          {% if can_download_output %}
+          <a href="{% url 'workflow_run_download' run.id %}" class="rr-download-btn">
+            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download all
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% if output_preview %}
+      <div class="rr-final-content">
+        <pre class="rr-preview-pre rr-final-pre">{{ output_preview }}</pre>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div id="rr-steps-wrap" {% if not step_files %}style="display:none;"{% endif %}>
+    {% if step_files %}
+    <div class="rr-steps-card">
+      <div class="rr-steps-head">
+        <span class="rr-steps-title">{% if run.status == 'SUCCESS' %}Intermediate outputs{% else %}Step outputs{% endif %}</span>
+        <span class="rr-steps-count">{{ step_files|length }} file{{ step_files|length|pluralize }}</span>
+      </div>
+      {% for item in step_files %}
+      <div class="rr-step-row">
+        <div class="rr-step-main">
+          <span class="rr-step-num">{{ item.order|add:1 }}</span>
+          <div class="rr-step-info">
+            <div class="rr-step-label">{{ item.label }}</div>
+            {% if item.preview and not item.hmmsearch_data %}
+            <button type="button" onclick="togglePreview(this, 'step-preview-{{ item.order }}')" class="rr-preview-toggle rr-preview-toggle--sm">
+              {% if item.preview_expanded %}<svg class="rr-chevron" style="width:12px;height:12px;transition:transform .2s;transform:rotate(180deg);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>{% else %}<svg class="rr-chevron" style="width:12px;height:12px;transition:transform .2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>{% endif %}
+              Preview
+            </button>
+            {% endif %}
+            {% if item.fasta_stats %}
+            <button type="button" onclick="togglePreview(this, 'fasta-stats-{{ item.order }}')" class="rr-preview-toggle rr-preview-toggle--sm">
+              <svg class="rr-chevron" style="width:12px;height:12px;transition:transform .2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Results
+            </button>
+            {% endif %}
+          </div>
+        </div>
+        {% if not item.hmmsearch_data and can_download_output %}
+        <a href="{% if item.download_url %}{{ item.download_url }}{% else %}{% url 'workflow_step_download' run.id item.order %}{% endif %}" class="rr-icon-btn" title="Download {{ item.label }}">
+          <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </a>
+        {% endif %}
+        {% if item.preview and not item.hmmsearch_data %}
+        <div id="step-preview-{{ item.order }}" class="rr-preview-box rr-step-preview"{% if not item.preview_expanded %} style="display:none;"{% endif %}>
+          <pre class="rr-preview-pre">{{ item.preview }}</pre>
+        </div>
+        {% endif %}
+        {% if item.fasta_stats %}
+        <div class="results-card" id="fasta-stats-{{ item.order }}" style="flex-basis:100%;width:100%;margin-top:10px;margin-bottom:0;display:none;">
+          <div class="results-header">
+            <div class="results-title-wrap">
+              <span class="results-title">FASTA Validation</span>
+            </div>
+            <span class="results-status {% if item.fasta_stats.valid %}ok{% else %}err{% endif %}">
+              {% if item.fasta_stats.valid %}✓ VALID{% else %}✗ INVALID{% endif %}
+            </span>
+          </div>
+          <div class="results-body">
+            <div class="report-summary">
+              <div class="comment"># FASTA Validator - output summary</div>
+              <div class="row"><span class="lbl">Detected type</span><span class="val">{{ item.fasta_stats.detected_type|default:"Unknown" }}</span></div>
+              <div class="row"><span class="lbl">Sequence count</span><span class="val">{{ item.fasta_stats.sequence_count }}</span></div>
+              <div class="row"><span class="lbl">Min length</span><span class="val">{% if item.fasta_stats.min_length is not None %}{{ item.fasta_stats.min_length }}{% else %}-{% endif %}</span><span class="note">{% if item.fasta_stats.detected_type == "Protein" %}aa{% elif item.fasta_stats.detected_type %}nt{% endif %}</span></div>
+              <div class="row"><span class="lbl">Max length</span><span class="val">{% if item.fasta_stats.max_length is not None %}{{ item.fasta_stats.max_length }}{% else %}-{% endif %}</span><span class="note">{% if item.fasta_stats.detected_type == "Protein" %}aa{% elif item.fasta_stats.detected_type %}nt{% endif %}</span></div>
+              <div class="row"><span class="lbl">Avg length</span><span class="val">{% if item.fasta_stats.avg_length is not None %}{{ item.fasta_stats.avg_length }}{% else %}-{% endif %}</span><span class="note">{% if item.fasta_stats.detected_type == "Protein" %}aa{% elif item.fasta_stats.detected_type %}nt{% endif %}</span></div>
+              <div class="row"><span class="lbl">Has gaps</span><span class="val">{% if item.fasta_stats.has_gaps %}yes{% else %}no{% endif %}</span></div>
+              <div class="row"><span class="lbl">Has stop codons</span><span class="val">{% if item.fasta_stats.has_stop_codons %}yes{% else %}no{% endif %}</span></div>
+              <div class="row"><span class="lbl">Duplicate IDs</span><span class="val">{{ item.fasta_stats.duplicate_count|default:0 }}</span></div>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-box">
+                <div class="stat-label">Sequences</div>
+                <div class="stat-val">{{ item.fasta_stats.sequence_count }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Type</div>
+                <div class="stat-val stat-val-text">{{ item.fasta_stats.detected_type|default:"-" }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Gaps</div>
+                <div class="stat-val stat-val-text {% if item.fasta_stats.has_gaps %}warn{% endif %}">{% if item.fasta_stats.has_gaps %}Yes{% else %}No{% endif %}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Duplicates</div>
+                <div class="stat-val {% if item.fasta_stats.duplicate_count %}err{% endif %}">{{ item.fasta_stats.duplicate_count|default:0 }}</div>
+              </div>
+            </div>
+            {% if item.fasta_stats.errors %}
+              {% for err in item.fasta_stats.errors %}
+              <div class="notice err">
+                <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <span>{{ err }}</span>
+              </div>
+              {% endfor %}
+            {% endif %}
+            {% if item.fasta_stats.warnings %}
+              {% for w in item.fasta_stats.warnings %}
+              <div class="notice">
+                <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>{{ w }}</span>
+              </div>
+              {% endfor %}
+            {% endif %}
+            {% if not item.fasta_stats.errors and not item.fasta_stats.warnings %}
+            <div class="notice notice-ok">
+              <svg class="notice-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>No issues found - file is ready to use.</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% if item.hmmsearch_data %}
+        <div class="hs-acc-wrap">
+          <div class="hs-acc-row">
+            <button type="button" class="hs-acc-trigger" aria-expanded="false"
+                    onclick="hsAccToggle(this,'hs-out-{{ item.order }}')">
+              <svg class="hs-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Preview <span class="hs-acc-ext-txt">.out</span>
+            </button>
+            {% if item.hmmsearch_data.out_download_url and can_download_output %}
+            <a href="{{ item.hmmsearch_data.out_download_url }}" class="rr-icon-btn" title="Download .out">
+              <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            {% endif %}
+          </div>
+          <div id="hs-out-{{ item.order }}" class="hs-acc-body" style="display:none;">
+            {% if item.hmmsearch_data.out_preview %}<pre class="rc-pre rc-pre-clipped">{{ item.hmmsearch_data.out_preview }}</pre>{% else %}<p class="hs-acc-empty">No preview available.</p>{% endif %}
+          </div>
+          <div class="hs-acc-row">
+            <button type="button" class="hs-acc-trigger" aria-expanded="false"
+                    onclick="hsAccToggle(this,'hs-tbl-{{ item.order }}')">
+              <svg class="hs-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Table output <span class="hs-acc-ext-txt">.tblout</span>
+            </button>
+            {% if item.hmmsearch_data.tblout_download_url and can_download_output %}
+            <a href="{{ item.hmmsearch_data.tblout_download_url }}" class="rr-icon-btn" title="Download .tblout">
+              <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            {% endif %}
+          </div>
+          <div id="hs-tbl-{{ item.order }}" class="hs-acc-body" style="display:none;">
+            {% if item.hmmsearch_data.tblout_preview %}<pre class="rc-pre rc-pre-clipped">{{ item.hmmsearch_data.tblout_preview }}</pre>{% else %}<p class="hs-acc-empty">No preview available.</p>{% endif %}
+          </div>
+          <div class="hs-acc-row">
+            <button type="button" class="hs-acc-trigger" aria-expanded="false"
+                    onclick="hsAccToggle(this,'hs-dom-{{ item.order }}')">
+              <svg class="hs-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Domain table <span class="hs-acc-ext-txt">.domtblout</span>
+            </button>
+            {% if item.hmmsearch_data.domtbl_download_url and can_download_output %}
+            <a href="{{ item.hmmsearch_data.domtbl_download_url }}" class="rr-icon-btn" title="Download .domtblout">
+              <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            {% endif %}
+          </div>
+          <div id="hs-dom-{{ item.order }}" class="hs-acc-body" style="display:none;">
+            {% if item.hmmsearch_data.domtbl_preview %}<pre class="rc-pre rc-pre-clipped">{{ item.hmmsearch_data.domtbl_preview }}</pre>{% else %}<p class="hs-acc-empty">No preview available.</p>{% endif %}
+          </div>
+          {% for ep in item.extra_previews %}
+          <div class="hs-acc-row">
+            <button type="button" class="hs-acc-trigger" aria-expanded="false"
+                    onclick="hsAccToggle(this,'hs-ep-{{ item.order }}-{{ forloop.counter }}')">
+              <svg class="hs-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              {{ ep.label }}
+            </button>
+            {% if ep.download_url and can_download_output %}
+            <a href="{{ ep.download_url }}" download class="rr-icon-btn" title="Download {{ ep.label }}">
+              <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            {% endif %}
+          </div>
+          <div id="hs-ep-{{ item.order }}-{{ forloop.counter }}" class="hs-acc-body" style="display:none;">
+            {% if ep.preview %}<pre class="rc-pre rc-pre-clipped">{{ ep.preview }}</pre>{% else %}<p class="hs-acc-empty">No preview available.</p>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if item.parameter_overrides.has_schema and item.parameter_overrides.overrides %}
+        {% include "_parameter_overrides.html" with parameter_overrides=item.parameter_overrides compact=True %}
+        {% endif %}
+      </div>
+      {% for ep in item.extra_previews %}
+      {% if not item.hmmsearch_data %}
+      <div class="rr-step-row rr-step-row--extra">
+        <div class="rr-step-main">
+          <span class="rr-step-num--extra"></span>
+          <div class="rr-step-info">
+            <div class="rr-step-label" style="font-size:13px; color:#4a6fa5;">{{ ep.label }}</div>
+            {% if ep.preview %}
+            <button type="button" onclick="togglePreview(this, 'extra-preview-{{ item.order }}-{{ forloop.counter }}')" class="rr-preview-toggle rr-preview-toggle--sm">
+              <svg class="rr-chevron" style="width:12px;height:12px;transition:transform .2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Preview
+            </button>
+            {% endif %}
+          </div>
+        </div>
+        {% if ep.download_url and can_download_output %}
+        <a href="{{ ep.download_url }}" download class="rr-icon-btn" title="Download {{ ep.label }}">
+          <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </a>
+        {% endif %}
+        {% if ep.preview %}
+        <div id="extra-preview-{{ item.order }}-{{ forloop.counter }}" class="rr-preview-box rr-step-preview" style="display:none;">
+          <pre class="rr-preview-pre">{{ ep.preview }}</pre>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if run.status == 'SUCCESS' and hmmbuild_project_id %}
+  <div class="rr-followup">
+    <div class="rr-followup-label">Use this HMM in another tool:</div>
+    <div class="rr-followup-btns">
+      <a href="{% url 'hmmsearch_form' %}?from_hmmbuild={{ hmmbuild_project_id }}" class="app-btn-secondary">
+        <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search with HMMSEARCH
+      </a>
+      <a href="{% url 'hmmemit_form' %}?from_hmmbuild={{ hmmbuild_project_id }}" class="app-btn-secondary">
+        <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Emit with HMMEMIT
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function togglePreview(btn, targetId) {
+  const box = document.getElementById(targetId);
+  const chevron = btn.querySelector('.rr-chevron');
+  const isOpen = box.style.display !== 'none';
+  box.style.display = isOpen ? 'none' : 'block';
+  chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+function hsAccToggle(btn, targetId) {
+  var body = document.getElementById(targetId);
+  if (!body) return;
+  var chev = btn.querySelector('.hs-acc-chev');
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+  btn.setAttribute('aria-expanded', String(!open));
+}
+</script>
+
+{% if run.status == 'PENDING' or run.status == 'RUNNING' %}
+<script>
+const RUN_ID = {{ run.id }};
+const TOTAL_STEPS = {{ total_steps }};
+const STEP_IDS = [{% for item in step_data %}{{ item.step.id }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+function setStepStatus(id, status) {
+  const row = document.getElementById(`rr-tl-step-${id}`);
+  if (!row) return;
+  row.dataset.status = status;
+  row.querySelector('.rr-tl-icon-success').style.display = status === 'SUCCESS' ? '' : 'none';
+  row.querySelector('.rr-tl-icon-running').style.display = status === 'RUNNING' ? '' : 'none';
+  row.querySelector('.rr-tl-icon-failure').style.display = status === 'FAILURE' ? '' : 'none';
+  row.querySelector('.rr-tl-icon-pending').style.display = status === 'PENDING' ? '' : 'none';
+  const conn = document.getElementById(`rr-tl-conn-${id}`);
+  if (conn) conn.dataset.done = (status === 'SUCCESS') ? 'true' : 'false';
+}
+
+function poll() {
+  fetch(`/workflows/runs/${RUN_ID}/poll/`)
+    .then(r => r.json())
+    .then(data => {
+      let doneCount = 0;
+      data.steps.forEach((s, i) => {
+        if (s.status === 'SUCCESS') doneCount++;
+        setStepStatus(STEP_IDS[i], s.status);
+      });
+
+      const sub = document.getElementById('rr-status-sub');
+      if (data.status === 'RUNNING' && sub) {
+        sub.innerHTML = `${doneCount} of ${TOTAL_STEPS} steps completed - this page updates automatically`;
+      }
+
+      if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+        setTimeout(() => window.location.reload(), 400);
+        return;
+      }
+
+      setTimeout(poll, 2000);
+    })
+    .catch(() => setTimeout(poll, 4000));
+}
+
+setTimeout(poll, 1500);
+</script>
+{% endif %}
+{% endblock %}

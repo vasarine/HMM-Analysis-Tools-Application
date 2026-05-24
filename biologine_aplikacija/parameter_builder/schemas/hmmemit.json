@@ -1,0 +1,167 @@
+{
+  "tool_id": "hmmemit",
+  "display_name": "HMMEMIT",
+  "executable": "hmmemit",
+  "fixed_args": [],
+  "parameters": [
+    {
+      "name": "num_seqs",
+      "label": "Number of sequences",
+      "flag": "-N",
+      "type": "number",
+      "default": 1,
+      "min": 1,
+      "max": 1000,
+      "ui_hidden": true
+    },
+    {
+      "name": "seed",
+      "label": "Random seed",
+      "flag": "--seed",
+      "type": "number",
+      "default": null,
+      "min": 0,
+      "ui_hidden": true
+    },
+    {
+      "name": "emit_mode",
+      "label": "Emission mode",
+      "section": "Emission mode",
+      "type": "radio_group",
+      "default": "sample",
+      "options": [
+        {
+          "value": "sample",
+          "label": "Sample sequences (default)",
+          "flag": null
+        },
+        {
+          "value": "consensus",
+          "label": "-c \u00b7 Majority-rule consensus (single sequence)",
+          "flag": "-c"
+        },
+        {
+          "value": "fancy_consensus",
+          "label": "-C \u00b7 Fancy consensus with thresholds",
+          "flag": "-C"
+        }
+      ],
+      "help_text": "Choose what HMMEMIT emits. Sampling produces multiple stochastic sequences; consensus produces a single representative sequence."
+    },
+    {
+      "name": "alignment",
+      "label": "Emit as alignment (-a)",
+      "section": "Output format",
+      "flag": "-a",
+      "type": "boolean",
+      "default": false,
+      "help_text": "Format sampled sequences as a multiple alignment rather than FASTA. Not compatible with profile sampling (-p).",
+      "depends_on": {
+        "field": "sample_from_profile",
+        "value": "core"
+      }
+    },
+    {
+      "name": "sample_from_profile",
+      "label": "Sample source",
+      "section": "Profile sampling",
+      "type": "radio_group",
+      "default": "core",
+      "options": [
+        {
+          "value": "core",
+          "label": "From core model (default)",
+          "flag": null
+        },
+        {
+          "value": "profile",
+          "label": "-p \u00b7 From profile (length-configured)",
+          "flag": "-p"
+        }
+      ],
+      "help_text": "Profile sampling lets you control expected length and local/glocal mode.",
+      "depends_on": {
+        "field": "emit_mode",
+        "value": "sample"
+      }
+    },
+    {
+      "name": "expected_length",
+      "label": "Expected sequence length (-L)",
+      "section": "Profile sampling",
+      "flag": "-L",
+      "type": "number",
+      "default": 400,
+      "min": 1,
+      "max": 100000,
+      "help_text": "Used to configure the profile when sampling with -p.",
+      "depends_on": {
+        "field": "sample_from_profile",
+        "value": "profile"
+      }
+    },
+    {
+      "name": "profile_config",
+      "label": "Profile configuration",
+      "section": "Profile sampling",
+      "type": "radio_group",
+      "default": "local",
+      "options": [
+        {
+          "value": "local",
+          "label": "--local \u00b7 Multihit local (default)",
+          "flag": "--local"
+        },
+        {
+          "value": "unilocal",
+          "label": "--unilocal \u00b7 Unihit local",
+          "flag": "--unilocal"
+        },
+        {
+          "value": "glocal",
+          "label": "--glocal \u00b7 Multihit glocal",
+          "flag": "--glocal"
+        },
+        {
+          "value": "uniglocal",
+          "label": "--uniglocal \u00b7 Unihit glocal",
+          "flag": "--uniglocal"
+        }
+      ],
+      "depends_on": {
+        "field": "sample_from_profile",
+        "value": "profile"
+      }
+    },
+    {
+      "name": "minl",
+      "label": "Minimum 'any' threshold (--minl)",
+      "section": "Fancy consensus thresholds",
+      "flag": "--minl",
+      "type": "float",
+      "default": 0.0,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Below this fraction, the consensus residue is shown as 'any' (X/N).",
+      "depends_on": {
+        "field": "emit_mode",
+        "value": "fancy_consensus"
+      }
+    },
+    {
+      "name": "minu",
+      "label": "Uppercase threshold (--minu)",
+      "section": "Fancy consensus thresholds",
+      "flag": "--minu",
+      "type": "float",
+      "default": 0.0,
+      "min": 0.0,
+      "max": 1.0,
+      "help_text": "Above this fraction, the consensus residue is shown in upper case.",
+      "depends_on": {
+        "field": "emit_mode",
+        "value": "fancy_consensus"
+      }
+    }
+  ]
+}

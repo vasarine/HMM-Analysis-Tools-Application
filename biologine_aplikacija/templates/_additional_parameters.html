@@ -1,0 +1,323 @@
+{% spaceless %}
+<style>
+  .additional-parameters { margin-top: 16px; }
+  .ap-toggle {
+    background: none;
+    border: 1px solid #d6dde6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font: 600 13px/1 inherit;
+    color: #1f2937;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ap-toggle:hover { background: #f5f7fa; }
+  .ap-toggle .ap-chevron { font-size: 10px; line-height: 1; }
+  .ap-content {
+    margin-top: 12px;
+    padding: 16px 18px 18px;
+    border: 1px solid #e6ebf2;
+    border-radius: 8px;
+    background: #fbfcfe;
+  }
+  .ap-section-note {
+    font-size: 12px;
+    color: #6b7280;
+    padding: 8px 10px;
+    background: #eef2f7;
+    border-radius: 5px;
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+  .ap-section-header {
+    font-size: 11px;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 18px 0 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid #e5e9f0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  .ap-section-header:hover { color: #1f2937; }
+  .ap-section-header .ap-sec-chevron {
+    display: inline-block;
+    font-size: 9px;
+    transition: transform 0.15s;
+  }
+  .ap-section-header.ap-section-collapsed .ap-sec-chevron {
+    transform: rotate(-90deg);
+  }
+  .ap-section-header .ap-sec-count {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .ap-section-header:first-child,
+  .ap-section-note + .ap-section-header { margin-top: 0; }
+  .ap-field { margin-bottom: 10px; }
+  .ap-field:last-child { margin-bottom: 0; }
+  .ap-field.ap-hidden { display: none; }
+  .ap-field.ap-section-folded { display: none; }
+  .ap-section-header.ap-hidden { display: none; }
+  .ap-field > label.ap-field-label {
+    display: block;
+    font-weight: 500;
+    font-size: 13px;
+    color: #1f2937;
+    margin-bottom: 3px;
+  }
+  .ap-field input[type="number"],
+  .ap-field input[type="text"],
+  .ap-field select {
+    width: 100%;
+    max-width: 260px;
+    padding: 5px 9px;
+    border: 1px solid #d6dde6;
+    border-radius: 5px;
+    font: inherit;
+    font-size: 13px;
+    background: #fff;
+  }
+  .ap-field input[type="number"]:focus,
+  .ap-field input[type="text"]:focus,
+  .ap-field select:focus {
+    outline: none;
+    border-color: #6b7eb5;
+    box-shadow: 0 0 0 2px rgba(107, 126, 181, 0.15);
+  }
+  .ap-field input[type="file"] {
+    display: block;
+    font: inherit;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .ap-field.ap-boolean > label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .ap-field.ap-boolean input[type="checkbox"] { margin: 0; }
+  .ap-radio-options {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 2px;
+  }
+  .ap-radio-options label {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-weight: 400;
+    font-size: 13px;
+    color: #1f2937;
+    cursor: pointer;
+    line-height: 1.35;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.12s;
+  }
+  .ap-radio-options label:hover { background: #f1f4f9; }
+  .ap-radio-options input[type="radio"] { margin-top: 2px; }
+  .ap-help {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 3px;
+    line-height: 1.35;
+  }
+</style>
+
+<div class="additional-parameters">
+  <button type="button" class="ap-toggle" onclick="toggleAdditionalParams(this)">
+    Additional parameters
+    <span class="ap-chevron">▾</span>
+  </button>
+  <div class="ap-content" style="display:none">
+    <div class="ap-section-note">
+      Leave parameters at their defaults unless you have a specific reason to change them.
+      Mutually-exclusive options appear as radio buttons; dependent fields show up once their controlling option is selected.
+    </div>
+    {% for field in form %}
+      {% if field.name|slice:":6" == "param_" %}
+        {% ifchanged field.field.widget.attrs.data_section %}
+          {% if field.field.widget.attrs.data_section %}
+            <div class="ap-section-header" data-section="{{ field.field.widget.attrs.data_section }}"><span class="ap-sec-chevron">▾</span>{{ field.field.widget.attrs.data_section }}<span class="ap-sec-count"></span></div>
+          {% endif %}
+        {% endifchanged %}
+        {% if field.field.widget.input_type == "radio" %}
+          <div class="ap-field ap-radio-group" data-field-section="{{ field.field.widget.attrs.data_section|default:'' }}">
+            <label class="ap-field-label">{{ field.label }}</label>
+            <div class="ap-radio-options">
+              {% for choice in field %}
+                <label>
+                  {{ choice.tag }}
+                  <span>{{ choice.choice_label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+            {% if field.help_text %}<div class="ap-help">{{ field.help_text }}</div>{% endif %}
+            {% if field.errors %}{% for e in field.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+          </div>
+        {% elif field.field.widget.input_type == "checkbox" %}
+          <div class="ap-field ap-boolean" data-field-section="{{ field.field.widget.attrs.data_section|default:'' }}">
+            <label for="{{ field.id_for_label }}">
+              {{ field }} <span>{{ field.label }}</span>
+            </label>
+            {% if field.help_text %}<div class="ap-help">{{ field.help_text }}</div>{% endif %}
+            {% if field.errors %}{% for e in field.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+          </div>
+        {% else %}
+          <div class="ap-field" data-field-section="{{ field.field.widget.attrs.data_section|default:'' }}">
+            <label class="ap-field-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="ap-help">{{ field.help_text }}</div>{% endif %}
+            {% if field.errors %}{% for e in field.errors %}<p class="form-error">{{ e }}</p>{% endfor %}{% endif %}
+          </div>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+function toggleAdditionalParams(btn) {
+  const content = btn.nextElementSibling;
+  const open = content.style.display === 'none';
+  content.style.display = open ? 'block' : 'none';
+  btn.querySelector('.ap-chevron').textContent = open ? '▴' : '▾';
+}
+
+(function () {
+  function readControllerValue(name) {
+    const nodes = document.getElementsByName(name);
+    if (!nodes.length) return null;
+    const ownerWrap = nodes[0].closest('.ap-field');
+    if (ownerWrap && ownerWrap.classList.contains('ap-hidden')) return null;
+    for (const n of nodes) {
+      if (n.type === 'radio') {
+        if (n.checked) return n.value;
+        continue;
+      }
+      if (n.type === 'checkbox') return n.checked ? 'true' : 'false';
+      return n.value;
+    }
+    return null;
+  }
+
+  function refreshSectionVisibility() {
+    const headers = document.querySelectorAll('.ap-content .ap-section-header[data-section]');
+    headers.forEach((header) => {
+      const section = header.dataset.section;
+      const fields = document.querySelectorAll(
+        '.ap-content .ap-field[data-field-section="' + section.replace(/"/g, '\\"') + '"]'
+      );
+      if (!fields.length) return;
+      const visibleFields = Array.from(fields).filter((f) => !f.classList.contains('ap-hidden'));
+      header.classList.toggle('ap-hidden', visibleFields.length === 0);
+      const count = header.querySelector('.ap-sec-count');
+      if (count) count.textContent = visibleFields.length || '';
+    });
+  }
+
+  const COLLAPSED_BY_DEFAULT = ['Advanced', 'Expert', 'Output'];
+
+  function applySectionFolding(header) {
+    const section = header.dataset.section;
+    if (!section) return;
+    const collapsed = header.classList.contains('ap-section-collapsed');
+    const fields = document.querySelectorAll(
+      '.ap-content .ap-field[data-field-section="' + section.replace(/"/g, '\\"') + '"]'
+    );
+    fields.forEach((f) => f.classList.toggle('ap-section-folded', collapsed));
+  }
+
+  function wireSectionToggles() {
+    const headers = document.querySelectorAll('.ap-content .ap-section-header[data-section]');
+    headers.forEach((header) => {
+      if (COLLAPSED_BY_DEFAULT.includes(header.dataset.section)) {
+        header.classList.add('ap-section-collapsed');
+      }
+      applySectionFolding(header);
+      header.addEventListener('click', () => {
+        header.classList.toggle('ap-section-collapsed');
+        applySectionFolding(header);
+      });
+    });
+  }
+
+  function wireDependencies() {
+    const deps = document.querySelectorAll('.ap-content [data-depends-on-field]');
+    const wraps = new Set();
+    const updates = [];
+
+    deps.forEach((el) => {
+      const wrap = el.closest('.ap-field');
+      if (!wrap) return;
+      if (wraps.has(wrap)) return;
+      wraps.add(wrap);
+
+      const controllerName = el.dataset.dependsOnField;
+      let allowed;
+      try { allowed = JSON.parse(el.dataset.dependsOnValues || '[]'); }
+      catch (e) { allowed = []; }
+
+      const update = () => {
+        const current = readControllerValue(controllerName);
+        if (allowed.includes(current)) {
+          wrap.classList.remove('ap-hidden');
+        } else {
+          wrap.classList.add('ap-hidden');
+        }
+      };
+      updates.push({ controllerName, update });
+    });
+
+    // Run updates in order, repeating until visibility is stable.
+    // This handles chained dependencies (A controls B, B controls C).
+    const runAll = () => {
+      for (let i = 0; i < 5; i++) {
+        const snapshot = Array.from(document.querySelectorAll('.ap-content .ap-field'))
+          .map((f) => f.classList.contains('ap-hidden') ? '1' : '0').join('');
+        updates.forEach((u) => u.update());
+        const next = Array.from(document.querySelectorAll('.ap-content .ap-field'))
+          .map((f) => f.classList.contains('ap-hidden') ? '1' : '0').join('');
+        if (snapshot === next) break;
+      }
+      refreshSectionVisibility();
+    };
+
+    updates.forEach((u) => {
+      document.getElementsByName(u.controllerName).forEach((ctrl) => {
+        ctrl.addEventListener('change', runAll);
+        ctrl.addEventListener('input', runAll);
+      });
+    });
+    runAll();
+  }
+
+  function init() {
+    wireSectionToggles();
+    wireDependencies();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+{% endspaceless %}

@@ -1,0 +1,17 @@
+{% if parameter_overrides.has_schema %}
+<div class="param-overrides{% if compact %} param-overrides--compact{% endif %}">
+  <div class="param-overrides-title">Parameters</div>
+  {% if parameter_overrides.overrides %}
+  <div class="param-overrides-list">
+    {% for p in parameter_overrides.overrides %}
+    <div class="param-overrides-row">
+      <span class="param-overrides-label">{{ p.label }}</span>
+      <span class="param-overrides-value">{{ p.value }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="param-overrides-empty">Default parameters used.</div>
+  {% endif %}
+</div>
+{% endif %}
