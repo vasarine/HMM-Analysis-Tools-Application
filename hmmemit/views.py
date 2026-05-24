@@ -1,3 +1,8 @@
+"""
+Pages for emitting sequences from an HMM profile: the form, task status
+and downloading the generated FASTA.
+"""
+
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.http import FileResponse, Http404, JsonResponse

@@ -1,3 +1,8 @@
+"""
+Validating FASTA input: checking the file is well-formed and what
+type of sequences it contains.
+"""
+
 from Bio import SeqIO
 
 

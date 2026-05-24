@@ -1,3 +1,8 @@
+"""
+Builds command parameters from a tool's JSON schema.
+Checks the values and puts them together into the final command.
+"""
+
 import json
 
 

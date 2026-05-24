@@ -1,3 +1,8 @@
+"""
+Celery task that runs the hmmsearch command in the background and
+saves its output back to the project.
+"""
+
 from biologine_aplikacija.error_utils import parse_hmmsearch_error, sanitize_exception_message
 from biologine_aplikacija.parameter_builder import CommandBuilder, SCHEMAS_DIR
 from celery import shared_task

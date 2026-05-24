@@ -1,3 +1,8 @@
+"""
+Pages for building HMM profiles: the build form, task status and
+downloading the finished profile.
+"""
+
 from .forms import HMMBuildForm
 from django.http import FileResponse, Http404, JsonResponse
 from .models import HMMBuildProject

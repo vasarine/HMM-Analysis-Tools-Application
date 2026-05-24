@@ -1,3 +1,8 @@
+"""
+Caches HMM profiles downloaded from Pfam/InterPro so the same id isn't
+fetched twice, and logs the downloads.
+"""
+
 import hashlib
 import logging
 import os

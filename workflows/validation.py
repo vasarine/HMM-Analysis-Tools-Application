@@ -1,3 +1,7 @@
+"""
+Data types and the rules that check whether two steps can be connected
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

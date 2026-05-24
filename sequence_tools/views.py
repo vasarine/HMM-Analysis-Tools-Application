@@ -1,3 +1,8 @@
+"""
+Pages for the FASTA validator and sequence cleaner: running them and
+serving the cleaned files for download.
+"""
+
 import os
 import uuid
 import shutil

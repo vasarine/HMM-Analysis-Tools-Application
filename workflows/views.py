@@ -1,3 +1,8 @@
+"""
+Views for the workflow builder: creating, editing, running workflows
+and showing the results. Also handles presets and file downloads.
+"""
+
 import io
 import json
 import os

@@ -1,3 +1,8 @@
+"""
+Celery tasks that run a workflow in the background so the browser
+doesn't have to wait. Rebuilds the step inputs/outputs and calls the engine.
+"""
+
 import logging
 import os
 

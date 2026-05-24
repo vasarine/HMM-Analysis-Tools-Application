@@ -1,3 +1,8 @@
+"""
+Celery tasks that run the alignment tools (Clustal Omega, MAFFT, MUSCLE,
+Kalign) in the background.
+"""
+
 import logging
 import os
 import re

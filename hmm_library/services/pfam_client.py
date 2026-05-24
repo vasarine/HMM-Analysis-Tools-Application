@@ -1,3 +1,7 @@
+"""
+Gets the profile and metadata for a PF id.
+"""
+
 import gzip
 import logging
 import re

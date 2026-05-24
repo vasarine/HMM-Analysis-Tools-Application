@@ -1,3 +1,8 @@
+"""
+Pages for multiple sequence alignment and format conversion: picking the
+tool, running it and downloading the aligned output.
+"""
+
 import os
 import uuid
 import shutil

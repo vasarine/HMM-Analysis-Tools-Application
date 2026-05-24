@@ -1,3 +1,8 @@
+"""
+Turns raw tool and Python errors into short, clean messages that are
+safe to show to the user.
+"""
+
 import re
 
 

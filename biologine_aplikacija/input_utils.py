@@ -1,3 +1,8 @@
+"""
+Shared helpers for the "upload a file or paste sequences" input that
+several tools reuse.
+"""
+
 import os
 from django import forms
 

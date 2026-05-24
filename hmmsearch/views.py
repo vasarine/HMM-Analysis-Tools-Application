@@ -1,3 +1,8 @@
+"""
+Pages for running HMM searches: shows the form, polls the task status
+and serves the result files for download.
+"""
+
 import os
 import uuid
 import logging

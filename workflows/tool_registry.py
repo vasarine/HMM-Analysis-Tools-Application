@@ -1,3 +1,8 @@
+"""
+Maps each workflow tool to its parameter schema and builds the
+parameters for a step from its config.
+"""
+
 TOOL_SCHEMA_ID = {
     'fasta_validate': None,
     'sequence_clean': None,

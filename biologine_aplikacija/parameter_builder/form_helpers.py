@@ -1,3 +1,8 @@
+"""
+Builds Django form fields from a tool's JSON schema, so the parameter
+forms don't have to be written by hand.
+"""
+
 import json
 
 from django import forms

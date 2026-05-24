@@ -1,3 +1,8 @@
+"""
+Helpers for building short previews of result files and text, with a
+note when the output gets truncated.
+"""
+
 import os
 from dataclasses import dataclass
 

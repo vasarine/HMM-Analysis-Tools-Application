@@ -1,3 +1,8 @@
+"""
+The workflow engine. Runs the steps one by one and passes each step's
+output to the next, deciding which files move between the tools.
+"""
+
 import os
 import shutil
 import time

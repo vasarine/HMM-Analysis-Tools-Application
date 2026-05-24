@@ -1,3 +1,8 @@
+"""
+Helpers for HMM search: figures out whether an id is Pfam or InterPro
+and fetches the matching profile.
+"""
+
 import logging
 
 logger = logging.getLogger(__name__)

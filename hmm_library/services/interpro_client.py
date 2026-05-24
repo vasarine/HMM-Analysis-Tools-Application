@@ -1,3 +1,7 @@
+"""
+Fetches entry info and the HMM for a given IPR id.
+"""
+
 import logging
 import re
 from typing import Any, Dict, Optional

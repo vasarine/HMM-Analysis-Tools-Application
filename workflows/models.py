@@ -1,3 +1,8 @@
+"""
+Database models for workflows: the workflow itself, its steps and its runs.
+Also holds the tool types with their labels and colours.
+"""
+
 from datetime import timedelta
 from django.db import models
 from django.conf import settings

@@ -1,3 +1,8 @@
+"""
+Celery task that runs hmmbuild in the background to turn an alignment
+into an HMM profile.
+"""
+
 from celery import shared_task, states
 from celery.exceptions import SoftTimeLimitExceeded
 import subprocess

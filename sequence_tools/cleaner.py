@@ -1,3 +1,8 @@
+"""
+Cleaning FASTA sequences: removing gaps and stop characters, handling
+duplicates and filtering by length. Also guesses if it's DNA, RNA or protein.
+"""
+
 import os
 import uuid
 from Bio import SeqIO

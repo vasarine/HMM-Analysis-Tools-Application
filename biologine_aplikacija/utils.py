@@ -1,3 +1,8 @@
+"""
+Small shared helpers, mostly for safely deleting a project's files
+from storage.
+"""
+
 import logging
 from typing import Iterable
 

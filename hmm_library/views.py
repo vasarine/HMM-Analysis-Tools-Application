@@ -1,3 +1,7 @@
+"""
+Small JSON endpoint that powers the Pfam/InterPro id autocomplete.
+"""
+
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from .services import HMMCacheManager

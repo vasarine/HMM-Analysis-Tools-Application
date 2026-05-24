@@ -1,3 +1,8 @@
+"""
+Celery task that runs hmmemit in the background to generate sequences
+from an HMM profile.
+"""
+
 from biologine_aplikacija.error_utils import parse_hmmemit_error, sanitize_exception_message
 from biologine_aplikacija.parameter_builder import CommandBuilder, SCHEMAS_DIR
 from celery import shared_task
