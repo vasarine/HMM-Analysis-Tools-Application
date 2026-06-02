@@ -17,4 +17,6 @@ urlpatterns = [
     path('runs/<int:run_id>/step/<int:step_order>/download/', views.workflow_step_download, name='workflow_step_download'),
     path('runs/<int:run_id>/delete/',    views.delete_workflow_run,   name='delete_workflow_run'),
     path('<int:workflow_id>/delete/',    views.delete_workflow,       name='delete_workflow'),
+    path('<int:workflow_id>/export/',    views.workflow_export,       name='workflow_export'),
+    path('import/',                      views.workflow_import,       name='workflow_import'),
 ]

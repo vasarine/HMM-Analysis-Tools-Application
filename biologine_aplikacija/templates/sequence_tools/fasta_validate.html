@@ -47,6 +47,10 @@
         <div class="tab-toggle" role="tablist">
           <button type="button" id="tab-upload" class="active" onclick="appSwitchTab('upload')">Upload file</button>
           <button type="button" id="tab-paste" onclick="appSwitchTab('paste')">Paste sequences</button>
+          <button type="button" onclick="loadExampleFile('/media/examples/example_proteins.fa', 'fasta_file', 'fv-filename', appSwitchTab)">
+            Load example
+          </button>
+        </button>
         </div>
 
         <div id="pane-upload">

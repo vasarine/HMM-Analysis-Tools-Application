@@ -230,3 +230,41 @@ function rcToggleFull(btn) {
   pre.classList.toggle('rc-pre-clipped', !full);
   btn.textContent = full ? 'Collapse preview' : 'Show full preview';
 }
+
+async function loadExampleFile(url, fileInputName, filenameDisplayId, switchFn) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      alert('Could not load example file.');
+      return;
+    }
+    const blob = await response.blob();
+    const filename = url.split('/').pop();
+    const file = new File([blob], filename, { type: 'text/plain' });
+
+    const input = document.querySelector(`input[type="file"][name="${fileInputName}"]`);
+    if (!input) {
+      alert('File input not found: ' + fileInputName);
+      return;
+    }
+
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    if (filenameDisplayId) {
+      const display = document.getElementById(filenameDisplayId);
+      if (display) display.textContent = filename;
+    }
+
+    if (typeof switchFn === 'function') switchFn('upload');
+  } catch (e) {
+    alert('Error loading example: ' + e.message);
+  }
+}
+
+async function loadHmmsearchExample() {
+  await loadExampleFile('/media/examples/example_profile.hmm', 'hmm_file', 'hmm-filename', null);
+  await loadExampleFile('/media/examples/example_search_target.fasta', 'fasta_file', 'fasta-filename', typeof hfSwitchFastaTab === 'function' ? hfSwitchFastaTab : null);
+}

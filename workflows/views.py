@@ -14,6 +14,7 @@ from django.http import HttpResponse, JsonResponse, Http404, FileResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from django.conf import settings
+from django.utils import timezone
 
 from .models import Workflow, WorkflowStep, WorkflowRun, WorkflowRunInput, StepRun, TOOL_META
 from .tasks import run_workflow_engine
@@ -264,6 +265,27 @@ def _workflow_to_json(workflow):
         'steps': steps,
     }
 
+def workflow_export(request, workflow_id):
+    workflow = get_object_or_404(Workflow, id=workflow_id)
+    if workflow.user and workflow.user != request.user:
+        raise Http404
+    data = {
+        'format_version': '1.0',
+        'exported_at': timezone.now().isoformat(),
+        'name': workflow.name,
+        'description': workflow.description,
+        'steps': [
+            {'order': s.order, 'tool_type': s.tool_type, 'config': dict(s.config or {})}
+            for s in workflow.steps.order_by('order')
+        ],
+    }
+    filename = _safe_name(workflow.name) + '.json'
+    response = HttpResponse(
+        json.dumps(data, indent=2, ensure_ascii=False),
+        content_type='application/json',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 def workflow_list(request):
     _ensure_templates()
@@ -402,6 +424,38 @@ def save_workflow(request):
         'id': workflow.id,
         'redirect_url': reverse('workflow_run_start', args=[workflow.id]),
     })
+    
+    
+@require_POST
+def workflow_import(request):
+    upload = request.FILES.get('workflow_file')
+    if not upload:
+        return redirect('workflow_list')
+    try:
+        data = json.loads(upload.read().decode('utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return redirect('workflow_list')
+
+    steps_data = data.get('steps') or []
+    valid_types = {t[0] for t in WorkflowStep._meta.get_field('tool_type').choices}
+    steps_data = [s for s in steps_data if s.get('tool_type') in valid_types]
+    if not steps_data:
+        return redirect('workflow_list')
+
+    workflow = Workflow.objects.create(
+        user=request.user if request.user.is_authenticated else None,
+        name=(data.get('name') or 'Imported workflow') + ' (imported)',
+        description=data.get('description', ''),
+        is_template=False,
+    )
+    for i, step in enumerate(steps_data):
+        WorkflowStep.objects.create(
+            workflow=workflow,
+            order=i,
+            tool_type=step['tool_type'],
+            config=step.get('config', {}),
+        )
+    return redirect('workflow_builder_edit', workflow_id=workflow.id)
 
 
 @require_POST
